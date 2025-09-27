@@ -1,0 +1,2 @@
+cargo:rerun-if-changed=src/grammar/T4Parser.g4
+cargo:rerun-if-changed=src/grammar/T4Lexer.g4

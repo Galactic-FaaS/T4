@@ -1,0 +1,47 @@
+// Simple T4 Example
+// Demonstrates basic T4 syntax
+
+module SimpleExample {
+    config {
+        default_crypto_provider = "libcrypto";
+        post_quantum_enabled = false;
+        hardware_acceleration = false;
+    }
+
+    // Simple function
+    fn greet(name: String) -> Void {
+        console::println("Hello, " + name + "!");
+    }
+
+    // Function with basic types
+    fn add_numbers(a: Int32, b: Int32) -> Int32 {
+        let result: Int32 = a + b;
+        result
+    }
+
+    // Function demonstrating control flow
+    fn check_number(n: Int32) -> String {
+        if n > 0 {
+            "positive"
+        } else {
+            if n < 0 {
+                "negative"
+            } else {
+                "zero"
+            }
+        }
+    }
+
+    // Main function
+    fn main() -> Int32 {
+        greet("World");
+
+        let sum: Int32 = add_numbers(5, 3);
+        console::println("5 + 3 = " + sum.to_string());
+
+        let status: String = check_number(-1);
+        console::println("Number is " + status);
+
+        0
+    }
+}
