@@ -1,0 +1,181 @@
+// T4 Working Cryptographic Demo
+// This example demonstrates real cryptographic operations that compile and run
+
+module CryptoWorkingDemo {
+    import "libcrypto.so" as crypto_lib;
+
+    config {
+        default_crypto_provider = "libcrypto";
+        post_quantum_enabled = true;
+        hardware_acceleration = true;
+    }
+
+    // Function demonstrating basic AES encryption
+    fn demonstrate_basic_crypto() -> Void {
+        console::println("=== T4 Basic Cryptography Demo ===");
+
+        // Generate an AES key
+        let aes_key: Key<AES256> = crypto::generate_key();
+        console::println("Generated AES-256 key");
+
+        // Prepare plaintext
+        let plaintext: Plaintext = Plaintext::from("Hello, T4 Cryptography!");
+        console::println("Plaintext: " + plaintext.to_string());
+
+        // Generate nonce
+        let nonce: Nonce = crypto::generate_nonce();
+
+        // Encrypt the data
+        let ciphertext: Ciphertext<AES256> = crypto::encrypt(plaintext, aes_key, nonce);
+        console::println("Encryption completed");
+
+        // Decrypt the data
+        let decrypted: Plaintext = crypto::decrypt(ciphertext, aes_key, nonce);
+        console::println("Decryption: " + decrypted.to_string());
+
+        // Verify correctness
+        let is_correct: Bool = decrypted.to_string() == "Hello, T4 Cryptography!";
+        console::println("Decryption successful: " + is_correct.to_string());
+    }
+
+    // Function demonstrating digital signatures
+    fn demonstrate_digital_signatures() -> Void {
+        console::println("\n=== Digital Signatures Demo ===");
+
+        // Generate Ed25519 keypair
+        let (public_key, private_key): (PublicKey<Ed25519>, PrivateKey<Ed25519>) = crypto::generate_keypair();
+        console::println("Generated Ed25519 keypair");
+
+        // Prepare message
+        let message: Bytes = Bytes::from("This message will be signed");
+
+        // Sign the message
+        let signature: Signature<Ed25519> = crypto::sign(message, private_key);
+        console::println("Message signed");
+
+        // Verify the signature
+        let is_valid: Bool = crypto::verify(message, signature, public_key);
+        console::println("Signature verification: " + is_valid.to_string());
+
+        // Demonstrate signature failure
+        let wrong_message: Bytes = Bytes::from("This message will be signed (modified)");
+        let is_wrong_valid: Bool = crypto::verify(wrong_message, signature, public_key);
+        console::println("Wrong message verification: " + is_wrong_valid.to_string());
+    }
+
+    // Function demonstrating key exchange
+    fn demonstrate_key_exchange() -> Void {
+        console::println("\n=== Key Exchange Demo ===");
+
+        // Generate two ECDH keypairs
+        let (alice_public, alice_private): (PublicKey<SecP256r1>, PrivateKey<SecP256r1>) = crypto::generate_keypair();
+        let (bob_public, bob_private): (PublicKey<SecP256r1>, PrivateKey<SecP256r1>) = crypto::generate_keypair();
+
+        console::println("Generated ECDH keypairs");
+
+        // Perform key exchange
+        let alice_shared: SharedSecret<SecP256r1> = crypto::ecdh_compute(alice_private, bob_public);
+        let bob_shared: SharedSecret<SecP256r1> = crypto::ecdh_compute(bob_private, alice_public);
+
+        console::println("ECDH key exchange completed");
+
+        // Verify shared secrets match
+        let secrets_match: Bool = alice_shared.constant_time_compare(bob_shared);
+        console::println("Shared secrets match: " + secrets_match.to_string());
+
+        // Use shared secret for encryption
+        let session_key: Key<AES256> = crypto::derive_key(alice_shared);
+        let message: Plaintext = Plaintext::from("ECDH encrypted message");
+        let nonce: Nonce = crypto::generate_nonce();
+
+        let encrypted: Ciphertext<AES256> = crypto::encrypt(message, session_key, nonce);
+        let decrypted: Plaintext = crypto::decrypt(encrypted, session_key, nonce);
+
+        console::println("ECDH-derived encryption: " + decrypted.to_string());
+    }
+
+    // Function demonstrating hash functions
+    fn demonstrate_hash_functions() -> Void {
+        console::println("\n=== Hash Functions Demo ===");
+
+        let data: Bytes = Bytes::from("Data to be hashed");
+
+        // SHA-3 256
+        let hash256: Hash<SHA3_256> = crypto::hash(data);
+        console::println("SHA3-256 hash: " + hash256.size().to_string() + " bytes");
+
+        // SHA-3 512
+        let hash512: Hash<SHA3_512> = crypto::hash(data);
+        console::println("SHA3-512 hash: " + hash512.size().to_string() + " bytes");
+
+        // Demonstrate hash is deterministic
+        let hash256_again: Hash<SHA3_256> = crypto::hash(data);
+        let is_deterministic: Bool = hash256.constant_time_compare(hash256_again);
+        console::println("Hash is deterministic: " + is_deterministic.to_string());
+
+        // Different data produces different hashes
+        let different_data: Bytes = Bytes::from("Different data");
+        let different_hash: Hash<SHA3_256> = crypto::hash(different_data);
+        let hashes_different: Bool = !hash256.constant_time_compare(different_hash);
+        console::println("Different data produces different hashes: " + hashes_different.to_string());
+    }
+
+    // Function demonstrating post-quantum cryptography
+    fn demonstrate_post_quantum() -> Void {
+        console::println("\n=== Post-Quantum Cryptography Demo ===");
+
+        // Generate Kyber keypair
+        let (pq_public, pq_private): (PublicKey<Kyber1024>, PrivateKey<Kyber1024>) = crypto::generate_keypair();
+        console::println("Generated Kyber-1024 keypair");
+
+        // Perform key encapsulation
+        let (shared_secret, ciphertext): (SharedSecret<Kyber1024>, Ciphertext<Kyber1024>) = crypto::encapsulate(pq_public);
+        console::println("Key encapsulation completed");
+
+        // Decapsulate shared secret
+        let decapsulated_secret: SharedSecret<Kyber1024> = crypto::decapsulate(pq_private, ciphertext);
+        console::println("Key decapsulation completed");
+
+        // Verify secrets match
+        let secrets_match: Bool = shared_secret.constant_time_compare(decapsulated_secret);
+        console::println("PQ shared secrets match: " + secrets_match.to_string());
+
+        // Use post-quantum shared secret for encryption
+        let aes_key: Key<AES256> = crypto::derive_key(shared_secret);
+        let message: Plaintext = Plaintext::from("Post-quantum encrypted message");
+        let nonce: Nonce = crypto::generate_nonce();
+
+        let encrypted: Ciphertext<AES256> = crypto::encrypt(message, aes_key, nonce);
+        let decrypted: Plaintext = crypto::decrypt(encrypted, aes_key, nonce);
+
+        console::println("PQ hybrid encryption: " + decrypted.to_string());
+    }
+
+    // Main function
+    fn main() -> Int32 {
+        console::println("=== T4 Working Cryptography Demo ===");
+
+        demonstrate_basic_crypto();
+        demonstrate_digital_signatures();
+        demonstrate_key_exchange();
+        demonstrate_hash_functions();
+        demonstrate_post_quantum();
+
+        console::println("\n=== Demo Complete ===");
+        0
+    }
+}
+
+// Example usage:
+// t4c working_demo.t4
+// ./working_demo
+
+// Expected output:
+// === T4 Working Cryptography Demo ===
+// === T4 Basic Cryptography Demo ===
+// Generated AES-256 key
+// Plaintext: Hello, T4 Cryptography!
+// Encryption completed
+// Decryption: Hello, T4 Cryptography!
+// Decryption successful: true
+// [... continues with signatures, key exchange, hashes, post-quantum crypto ...]
