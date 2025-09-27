@@ -1,0 +1,336 @@
+// T4 Data Types Example
+// Comprehensive demonstration of T4's type system and data structures
+
+module DataTypesDemo {
+    import "libcrypto.so" as crypto_lib;
+
+    config {
+        default_crypto_provider = "libcrypto";
+        post_quantum_enabled = true;
+        hardware_acceleration = true;
+    }
+
+    // Function demonstrating all basic T4 data types
+    fn demonstrate_basic_types() -> Void {
+        console::println("=== Basic Data Types ===");
+
+        // Integer types with different sizes
+        let int8: Int8 = 127;                    // -128 to 127
+        let int16: Int16 = 32767;                // -32768 to 32767
+        let int32: Int32 = 2147483647;           // -2147483648 to 2147483647
+        let int64: Int64 = 9223372036854775807;  // -9223372036854775808 to 9223372036854775807
+
+        // Unsigned integer types
+        let uint8: UInt8 = 255;                  // 0 to 255
+        let uint16: UInt16 = 65535;              // 0 to 65535
+        let uint32: UInt32 = 4294967295;         // 0 to 4294967295
+        let uint64: UInt64 = 18446744073709551615; // 0 to 18446744073709551615
+
+        // Floating point types
+        let float32: Float32 = 3.14159;          // Single precision
+        let float64: Float64 = 3.141592653589793; // Double precision
+
+        // Boolean type
+        let flag: Bool = true;
+
+        // Character type (Unicode)
+        let character: Char = 'A';
+        let unicode_char: Char = '世'; // Chinese character
+
+        // String types
+        let ascii_string: String = "Hello, T4!";
+        let unicode_string: String = "Hello, 世界!"; // UTF-8 string
+
+        // Raw byte arrays
+        let bytes: Bytes = Bytes::from([72, 101, 108, 108, 111]); // "Hello" in ASCII
+
+        console::println("Int8: " + int8.to_string());
+        console::println("Int16: " + int16.to_string());
+        console::println("Int32: " + int32.to_string());
+        console::println("Int64: " + int64.to_string());
+        console::println("UInt8: " + uint8.to_string());
+        console::println("Float32: " + float32.to_string());
+        console::println("Float64: " + float64.to_string());
+        console::println("Bool: " + flag.to_string());
+        console::println("Char: " + character.to_string());
+        console::println("Unicode Char: " + unicode_char.to_string());
+        console::println("ASCII String: " + ascii_string);
+        console::println("Unicode String: " + unicode_string);
+        console::println("Bytes length: " + bytes.len().to_string());
+    }
+
+    // Function demonstrating array operations
+    fn demonstrate_arrays() -> Void {
+        console::println("\n=== Array Operations ===");
+
+        // Fixed-size arrays
+        let numbers: [Int32; 5] = [1, 2, 3, 4, 5];
+        let mut mutable_array: [Int32; 3] = [10, 20, 30];
+
+        console::println("Original array: " + array_to_string(&numbers));
+        console::println("Mutable array: " + array_to_string(&mutable_array));
+
+        // Array element access (bounds-checked)
+        let first: Int32 = numbers[0];
+        let last: Int32 = numbers[4];
+
+        console::println("First element: " + first.to_string());
+        console::println("Last element: " + last.to_string());
+
+        // Array modification
+        mutable_array[0] = 100;
+        console::println("After modification: " + array_to_string(&mutable_array));
+
+        // Array length
+        console::println("Array length: " + numbers.len().to_string());
+
+        // Multi-dimensional arrays
+        let matrix: [[Int32; 2]; 2] = [[1, 2], [3, 4]];
+        console::println("Matrix[0][0]: " + matrix[0][0].to_string());
+        console::println("Matrix[1][1]: " + matrix[1][1].to_string());
+    }
+
+    // Function demonstrating vector operations
+    fn demonstrate_vectors() -> Void {
+        console::println("\n=== Vector Operations ===");
+
+        // Create a new vector
+        let mut vector: Vec<Int32> = Vec::new();
+
+        // Add elements
+        vector.push(1);
+        vector.push(2);
+        vector.push(3);
+        vector.push(4);
+        vector.push(5);
+
+        console::println("Vector: " + vector_to_string(&vector));
+        console::println("Vector length: " + vector.len().to_string());
+        console::println("Vector capacity: " + vector.capacity().to_string());
+
+        // Access elements
+        let first: Int32 = vector[0];
+        let last: Int32 = vector[vector.len() - 1];
+
+        console::println("First: " + first.to_string());
+        console::println("Last: " + last.to_string());
+
+        // Remove elements
+        let popped: Int32 = vector.pop().unwrap_or(0);
+        console::println("Popped: " + popped.to_string());
+        console::println("After pop: " + vector_to_string(&vector));
+
+        // Insert elements
+        vector.insert(2, 99);
+        console::println("After insert: " + vector_to_string(&vector));
+
+        // Remove by index
+        vector.remove(0);
+        console::println("After remove: " + vector_to_string(&vector));
+    }
+
+    // Function demonstrating HashMap operations
+    fn demonstrate_hashmap() -> Void {
+        console::println("\n=== HashMap Operations ===");
+
+        // Create a new HashMap
+        let mut map: HashMap<String, Int32> = HashMap::new();
+
+        // Insert key-value pairs
+        map.insert("Alice".to_string(), 25);
+        map.insert("Bob".to_string(), 30);
+        map.insert("Charlie".to_string(), 35);
+
+        console::println("Map size: " + map.len().to_string());
+
+        // Access values
+        let alice_age: Int32 = map.get("Alice").unwrap_or(0);
+        let unknown_age: Int32 = map.get("Unknown").unwrap_or(0);
+
+        console::println("Alice's age: " + alice_age.to_string());
+        console::println("Unknown's age: " + unknown_age.to_string());
+
+        // Check if key exists
+        let contains_bob: Bool = map.contains_key("Bob");
+        let contains_david: Bool = map.contains_key("David");
+
+        console::println("Contains Bob: " + contains_bob.to_string());
+        console::println("Contains David: " + contains_david.to_string());
+
+        // Remove entries
+        let removed: Option<Int32> = map.remove("Charlie");
+        console::println("Removed Charlie: " + removed.unwrap_or(0).to_string());
+        console::println("Map size after removal: " + map.len().to_string());
+
+        // Iterate over entries
+        console::println("Remaining entries:");
+        for (key, value) in map.iter() {
+            console::println("  " + key + ": " + value.to_string());
+        }
+    }
+
+    // Function demonstrating cryptographic data types
+    fn demonstrate_crypto_types() -> Void {
+        console::println("\n=== Cryptographic Data Types ===");
+
+        // Cryptographic key types
+        let aes_key: Key<AES256> = crypto::generate_key();
+        let rsa_keypair: (PublicKey<RSA2048>, PrivateKey<RSA2048>) = crypto::generate_keypair();
+
+        console::println("AES key generated: " + aes_key.size().to_string() + " bytes");
+        console::println("RSA keypair generated");
+
+        // Secret and public data
+        let secret_message: Secret<String> = Secret::new("This is a secret message");
+        let public_message: String = "This is public information";
+
+        console::println("Secret message length: " + secret_message.len().to_string());
+        console::println("Public message: " + public_message);
+
+        // Nonce for cryptographic operations
+        let nonce: Nonce = crypto::generate_nonce();
+        console::println("Nonce generated: " + nonce.size().to_string() + " bytes");
+
+        // Salt for password hashing
+        let salt: Salt = crypto::generate_salt();
+        console::println("Salt generated: " + salt.size().to_string() + " bytes");
+
+        // Hash values
+        let data: Bytes = Bytes::from("Hello, World!");
+        let hash: Hash<SHA3_256> = crypto::hash(data);
+        console::println("SHA3-256 hash: " + hash.size().to_string() + " bytes");
+    }
+
+    // Function demonstrating type conversion
+    fn demonstrate_type_conversion() -> Void {
+        console::println("\n=== Type Conversion ===");
+
+        // Integer to string
+        let number: Int32 = 42;
+        let number_str: String = number.to_string();
+        console::println("Number as string: " + number_str);
+
+        // String to integer
+        let str_num: String = "123";
+        let parsed: Int32 = str_num.parse_int().unwrap_or(0);
+        console::println("Parsed number: " + parsed.to_string());
+
+        // Float operations
+        let float_num: Float64 = 3.14159;
+        let int_part: Int64 = float_num.floor();
+        let frac_part: Float64 = float_num - int_part as Float64;
+
+        console::println("Original: " + float_num.to_string());
+        console::println("Integer part: " + int_part.to_string());
+        console::println("Fractional part: " + frac_part.to_string());
+
+        // Boolean conversion
+        let zero: Int32 = 0;
+        let non_zero: Int32 = 42;
+        let bool_from_zero: Bool = zero != 0;
+        let bool_from_non_zero: Bool = non_zero != 0;
+
+        console::println("0 as bool: " + bool_from_zero.to_string());
+        console::println("42 as bool: " + bool_from_non_zero.to_string());
+    }
+
+    // Function demonstrating complex data structures
+    fn demonstrate_complex_types() -> Void {
+        console::println("\n=== Complex Data Structures ===");
+
+        // Tuple types
+        let person: (String, Int32, Bool) = ("Alice", 30, true);
+        let (name, age, active) = person;
+
+        console::println("Name: " + name);
+        console::println("Age: " + age.to_string());
+        console::println("Active: " + active.to_string());
+
+        // Struct-like data with HashMap
+        let mut user: HashMap<String, String> = HashMap::new();
+        user.insert("username".to_string(), "alice123");
+        user.insert("email".to_string(), "alice@example.com");
+        user.insert("role".to_string(), "admin");
+
+        console::println("User profile:");
+        console::println("  Username: " + user.get("username").unwrap_or(&"unknown"));
+        console::println("  Email: " + user.get("email").unwrap_or(&"unknown"));
+        console::println("  Role: " + user.get("role").unwrap_or(&"unknown"));
+
+        // Optional values
+        let mut optional_value: Option<String> = Some("Hello".to_string());
+        console::println("Optional has value: " + optional_value.is_some().to_string());
+
+        match optional_value {
+            Some(val) => console::println("Value: " + val),
+            None => console::println("No value")
+        }
+
+        optional_value = None;
+        console::println("Optional has value after None: " + optional_value.is_some().to_string());
+
+        match optional_value {
+            Some(val) => console::println("Value: " + val),
+            None => console::println("No value")
+        }
+    }
+
+    // Helper function to convert array to string
+    fn array_to_string(arr: &[Int32]) -> String {
+        let mut result: String = "[".to_string();
+        for (i, &val) in arr.iter().enumerate() {
+            if i > 0 {
+                result = result + ", ";
+            }
+            result = result + val.to_string();
+        }
+        result + "]"
+    }
+
+    // Helper function to convert vector to string
+    fn vector_to_string(vec: &Vec<Int32>) -> String {
+        let mut result: String = "[".to_string();
+        for (i, &val) in vec.iter().enumerate() {
+            if i > 0 {
+                result = result + ", ";
+            }
+            result = result + val.to_string();
+        }
+        result + "]"
+    }
+
+    // Main function
+    fn main() -> Int32 {
+        demonstrate_basic_types();
+        demonstrate_arrays();
+        demonstrate_vectors();
+        demonstrate_hashmap();
+        demonstrate_crypto_types();
+        demonstrate_type_conversion();
+        demonstrate_complex_types();
+
+        console::println("\n=== Data Types Demo Complete ===");
+        0
+    }
+}
+
+// Example usage:
+// t4c data_types.t4
+// ./data_types
+
+// Expected output:
+// === Basic Data Types ===
+// Int8: 127
+// Int16: 32767
+// Int32: 2147483647
+// Int64: 9223372036854775807
+// UInt8: 255
+// Float32: 3.14159
+// Float64: 3.141592653589793
+// Bool: true
+// Char: A
+// Unicode Char: 世
+// ASCII String: Hello, T4!
+// Unicode String: Hello, 世界!
+// Bytes length: 5
+// [... continues with array, vector, hashmap, crypto types, etc.]

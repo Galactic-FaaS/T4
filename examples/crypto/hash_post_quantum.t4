@@ -1,0 +1,516 @@
+// T4 Hash Functions and Post-Quantum Cryptography Example
+// Comprehensive demonstration of hashing and post-quantum cryptographic primitives
+
+module HashPostQuantumDemo {
+    import "libcrypto.so" as crypto_lib;
+
+    config {
+        default_crypto_provider = "libcrypto";
+        post_quantum_enabled = true;
+        hardware_acceleration = true;
+    }
+
+    // === HASH FUNCTION EXAMPLES ===
+
+    // Function demonstrating SHA-3 hash functions
+    fn demonstrate_sha3_hashes() -> Void {
+        console::println("=== SHA-3 Hash Functions ===");
+
+        // Test data of various sizes
+        let small_data: Bytes = Bytes::from("Hello, World!");
+        let medium_data: Bytes = Bytes::from("This is a longer message for hashing with SHA-3 family of functions");
+        let large_data: Bytes = Bytes::from("A".repeat(1000)); // 1000 'A' characters
+
+        // SHA-3 variants
+        let sha3_224: Hash<SHA3_224> = crypto::hash(small_data);
+        let sha3_256: Hash<SHA3_256> = crypto::hash(medium_data);
+        let sha3_384: Hash<SHA3_384> = crypto::hash(medium_data);
+        let sha3_512: Hash<SHA3_512> = crypto::hash(large_data);
+
+        console::println("SHA3-224 hash: " + sha3_224.size().to_string() + " bytes");
+        console::println("SHA3-256 hash: " + sha3_256.size().to_string() + " bytes");
+        console::println("SHA3-384 hash: " + sha3_384.size().to_string() + " bytes");
+        console::println("SHA3-512 hash: " + sha3_512.size().to_string() + " bytes");
+
+        // Demonstrate hash collision resistance
+        let data1: Bytes = Bytes::from("Message 1");
+        let data2: Bytes = Bytes::from("Message 2");
+
+        let hash1: Hash<SHA3_256> = crypto::hash(data1);
+        let hash2: Hash<SHA3_256> = crypto::hash(data2);
+
+        let hashes_different: Bool = !hash1.constant_time_compare(hash2);
+        console::println("Different inputs produce different hashes: " + hashes_different.to_string());
+
+        // Demonstrate deterministic hashing
+        let hash1_again: Hash<SHA3_256> = crypto::hash(small_data);
+        let is_deterministic: Bool = sha3_256.constant_time_compare(hash1_again);
+        console::println("Hash function is deterministic: " + is_deterministic.to_string());
+    }
+
+    // Function demonstrating SHAKE extendable output functions
+    fn demonstrate_shake_functions() -> Void {
+        console::println("\n=== SHAKE Extendable Output Functions ===");
+
+        let data: Bytes = Bytes::from("Data for SHAKE functions");
+
+        // SHAKE-128 with different output lengths
+        let shake128_256: Hash<SHAKE128> = crypto::shake128(data, 32); // 256 bits
+        let shake128_512: Hash<SHAKE128> = crypto::shake128(data, 64); // 512 bits
+
+        console::println("SHAKE128 (256-bit): " + shake128_256.size().to_string() + " bytes");
+        console::println("SHAKE128 (512-bit): " + shake128_512.size().to_string() + " bytes");
+
+        // SHAKE-256 with different output lengths
+        let shake256_256: Hash<SHAKE256> = crypto::shake256(data, 32); // 256 bits
+        let shake256_1024: Hash<SHAKE256> = crypto::shake256(data, 128); // 1024 bits
+
+        console::println("SHAKE256 (256-bit): " + shake256_256.size().to_string() + " bytes");
+        console::println("SHAKE256 (1024-bit): " + shake256_1024.size().to_string() + " bytes");
+
+        // Demonstrate that different output lengths from same input are different
+        let outputs_different: Bool = !shake128_256.constant_time_compare(shake128_512);
+        console::println("Different output lengths produce different results: " + outputs_different.to_string());
+    }
+
+    // Function demonstrating BLAKE2 hash functions
+    fn demonstrate_blake2_hashes() -> Void {
+        console::println("\n=== BLAKE2 Hash Functions ===");
+
+        let data: Bytes = Bytes::from("Data for BLAKE2 hashing");
+
+        // BLAKE2b variants
+        let blake2b_256: Hash<BLAKE2b_256> = crypto::hash(data);
+        let blake2b_384: Hash<BLAKE2b_384> = crypto::hash(data);
+        let blake2b_512: Hash<BLAKE2b_512> = crypto::hash(data);
+
+        console::println("BLAKE2b-256: " + blake2b_256.size().to_string() + " bytes");
+        console::println("BLAKE2b-384: " + blake2b_384.size().to_string() + " bytes");
+        console::println("BLAKE2b-512: " + blake2b_512.size().to_string() + " bytes");
+
+        // BLAKE2s variants (smaller, faster)
+        let blake2s_128: Hash<BLAKE2s_128> = crypto::hash(data);
+        let blake2s_256: Hash<BLAKE2s_256> = crypto::hash(data);
+
+        console::println("BLAKE2s-128: " + blake2s_128.size().to_string() + " bytes");
+        console::println("BLAKE2s-256: " + blake2s_256.size().to_string() + " bytes");
+
+        // Demonstrate keyed hashing with BLAKE2
+        let key: Bytes = Bytes::from("secret_key_for_blake2");
+        let keyed_hash: Hash<BLAKE2b_256> = crypto::hash_keyed(data, key);
+
+        console::println("BLAKE2b keyed hash: " + keyed_hash.size().to_string() + " bytes");
+
+        // Verify keyed hash with same key
+        let keyed_hash2: Hash<BLAKE2b_256> = crypto::hash_keyed(data, key);
+        let keyed_consistent: Bool = keyed_hash.constant_time_compare(keyed_hash2);
+        console::println("Keyed hash is deterministic: " + keyed_consistent.to_string());
+
+        // Keyed hash with different key should be different
+        let different_key: Bytes = Bytes::from("different_secret_key");
+        let keyed_hash3: Hash<BLAKE2b_256> = crypto::hash_keyed(data, different_key);
+        let keyed_different: Bool = !keyed_hash.constant_time_compare(keyed_hash3);
+        console::println("Different keys produce different hashes: " + keyed_different.to_string());
+    }
+
+    // Function demonstrating hash-based applications
+    fn demonstrate_hash_applications() -> Void {
+        console::println("\n=== Hash Function Applications ===");
+
+        // Password hashing with salt
+        let password: String = "MySecurePassword123!";
+        let salt: Salt = crypto::generate_salt();
+
+        let password_hash: Hash<SHA3_256> = crypto::hash_password(password, salt);
+        console::println("Password hash with salt: " + password_hash.size().to_string() + " bytes");
+
+        // Verify password
+        let is_valid_password: Bool = crypto::verify_password(password, salt, password_hash);
+        console::println("Password verification: " + is_valid_password.to_string());
+
+        // File integrity checking
+        let file_content: Bytes = Bytes::from("Important file content that should not be modified");
+        let file_hash: Hash<SHA3_256> = crypto::hash(file_content);
+        console::println("File hash for integrity: " + file_hash.size().to_string() + " bytes");
+
+        // Verify file integrity
+        let file_hash2: Hash<SHA3_256> = crypto::hash(file_content);
+        let integrity_preserved: Bool = file_hash.constant_time_compare(file_hash2);
+        console::println("File integrity preserved: " + integrity_preserved.to_string());
+
+        // Digital fingerprinting
+        let document: String = "Legal Document - Contract #12345";
+        let fingerprint: Hash<SHA3_256> = crypto::hash(Bytes::from(document));
+        console::println("Document fingerprint: " + fingerprint.size().to_string() + " bytes");
+
+        // Merkle tree root hash
+        let leaves: Vec<Hash<SHA3_256>> = vec![
+            crypto::hash(Bytes::from("Transaction 1")),
+            crypto::hash(Bytes::from("Transaction 2")),
+            crypto::hash(Bytes::from("Transaction 3")),
+            crypto::hash(Bytes::from("Transaction 4"))
+        ];
+
+        let merkle_root: Hash<SHA3_256> = crypto::compute_merkle_root(leaves);
+        console::println("Merkle tree root: " + merkle_root.size().to_string() + " bytes");
+    }
+
+    // === POST-QUANTUM CRYPTOGRAPHY EXAMPLES ===
+
+    // Function demonstrating CRYSTALS-Kyber key encapsulation
+    fn demonstrate_kyber_kem() -> Void {
+        console::println("\n=== CRYSTALS-Kyber Key Encapsulation ===");
+
+        // Generate Kyber keypair
+        let (public_key, private_key): (PublicKey<Kyber1024>, PrivateKey<Kyber1024>) = crypto::generate_keypair();
+        console::println("Generated Kyber-1024 keypair");
+
+        // Demonstrate different parameter sets
+        let kyber_sizes: [Int32; 3] = [512, 768, 1024];
+        for &size in kyber_sizes.iter() {
+            let algorithm_name: String = "Kyber".to_string() + size.to_string();
+            console::println("Testing " + algorithm_name);
+
+            // In a real implementation, we'd generate different keypairs for each size
+            // For demo purposes, we'll just show the key sizes
+            console::println("  Public key size: ~" + (size * 2).to_string() + " bytes");
+            console::println("  Private key size: ~" + (size * 4).to_string() + " bytes");
+            console::println("  Ciphertext size: ~" + (size * 2).to_string() + " bytes");
+            console::println("  Shared secret size: 32 bytes");
+        }
+
+        // Perform key encapsulation
+        let (shared_secret, ciphertext): (SharedSecret<Kyber1024>, Ciphertext<Kyber1024>) = crypto::encapsulate(public_key);
+
+        console::println("Key encapsulation completed");
+        console::println("Shared secret: " + shared_secret.size().to_string() + " bytes");
+        console::println("Ciphertext: " + ciphertext.size().to_string() + " bytes");
+
+        // Decapsulate shared secret
+        let decapsulated_secret: SharedSecret<Kyber1024> = crypto::decapsulate(private_key, ciphertext);
+
+        // Verify secrets match
+        let secrets_match: Bool = shared_secret.constant_time_compare(decapsulated_secret);
+        console::println("Kyber secrets match: " + secrets_match.to_string());
+
+        // Demonstrate security levels
+        let security_levels: [String; 3] = ["Level 1 (128-bit)".to_string(), "Level 3 (192-bit)".to_string(), "Level 5 (256-bit)".to_string()];
+        for level in security_levels {
+            console::println("Kyber supports: " + level);
+        }
+    }
+
+    // Function demonstrating CRYSTALS-Dilithium signatures
+    fn demonstrate_dilithium_signatures() -> Void {
+        console::println("\n=== CRYSTALS-Dilithium Signatures ===");
+
+        // Generate Dilithium keypair
+        let (public_key, private_key): (PublicKey<Dilithium3>, PrivateKey<Dilithium3>) = crypto::generate_keypair();
+        console::println("Generated Dilithium-3 keypair");
+
+        // Demonstrate different parameter sets
+        let dilithium_levels: [Int32; 3] = [2, 3, 5];
+        for &level in dilithium_levels.iter() {
+            let algorithm_name: String = "Dilithium-".to_string() + level.to_string();
+            console::println("Testing " + algorithm_name);
+
+            console::println("  Public key size: ~" + (level * 500).to_string() + " bytes");
+            console::println("  Private key size: ~" + (level * 1000).to_string() + " bytes");
+            console::println("  Signature size: ~" + (level * 200).to_string() + " bytes");
+        }
+
+        // Sign a message
+        let message: Bytes = Bytes::from("Post-quantum signature message");
+        let signature: Signature<Dilithium3> = crypto::sign(message, private_key);
+
+        console::println("Message signed with Dilithium");
+        console::println("Signature size: " + signature.size().to_string() + " bytes");
+
+        // Verify signature
+        let is_valid: Bool = crypto::verify(message, signature, public_key);
+        console::println("Dilithium signature verification: " + is_valid.to_string());
+
+        // Demonstrate signature failure with modified message
+        let modified_message: Bytes = Bytes::from("Post-quantum signature message (modified)");
+        let is_modified_valid: Bool = crypto::verify(modified_message, signature, public_key);
+        console::println("Modified message verification: " + is_modified_valid.to_string());
+    }
+
+    // Function demonstrating Falcon signatures
+    fn demonstrate_falcon_signatures() -> Void {
+        console::println("\n=== Falcon Digital Signatures ===");
+
+        // Generate Falcon keypair
+        let (public_key, private_key): (PublicKey<Falcon512>, PrivateKey<Falcon512>) = crypto::generate_keypair();
+        console::println("Generated Falcon-512 keypair");
+
+        // Demonstrate different Falcon parameter sets
+        let falcon_sizes: [Int32; 3] = [512, 768, 1024];
+        for &size in falcon_sizes.iter() {
+            let algorithm_name: String = "Falcon-".to_string() + size.to_string();
+            console::println("Testing " + algorithm_name);
+
+            console::println("  Public key size: ~" + size.to_string() + " bytes");
+            console::println("  Private key size: ~" + (size * 2).to_string() + " bytes");
+            console::println("  Signature size: ~" + size.to_string() + " bytes");
+        }
+
+        // Sign message
+        let message: Bytes = Bytes::from("Message signed with Falcon");
+        let signature: Signature<Falcon512> = crypto::sign(message, private_key);
+
+        console::println("Falcon signature: " + signature.size().to_string() + " bytes");
+
+        // Verify signature
+        let is_valid: Bool = crypto::verify(message, signature, public_key);
+        console::println("Falcon signature verification: " + is_valid.to_string());
+    }
+
+    // Function demonstrating post-quantum hybrid schemes
+    fn demonstrate_hybrid_post_quantum() -> Void {
+        console::println("\n=== Post-Quantum Hybrid Schemes ===");
+
+        // Generate both classical and post-quantum keypairs
+        let (ec_public, ec_private): (PublicKey<SecP256r1>, PrivateKey<SecP256r1>) = crypto::generate_keypair();
+        let (kyber_public, kyber_private): (PublicKey<Kyber1024>, PrivateKey<Kyber1024>) = crypto::generate_keypair();
+        let (dilithium_public, dilithium_private): (PublicKey<Dilithium3>, PrivateKey<Dilithium3>) = crypto::generate_keypair();
+
+        console::println("Generated hybrid keypairs (EC + Kyber + Dilithium)");
+
+        // Perform hybrid key exchange (ECDH + Kyber)
+        let ecdh_secret: SharedSecret<SecP256r1> = crypto::ecdh_compute(ec_private, ec_public);
+        let (kyber_secret, kyber_ciphertext): (SharedSecret<Kyber1024>, Ciphertext<Kyber1024>) = crypto::encapsulate(kyber_public);
+
+        // Combine shared secrets for maximum security
+        let combined_secret: Bytes = ecdh_secret.to_bytes() + kyber_secret.to_bytes();
+        let hybrid_shared_secret: Hash<SHA3_256> = crypto::hash(combined_secret);
+
+        console::println("Hybrid shared secret: " + hybrid_shared_secret.size().to_string() + " bytes");
+
+        // Use hybrid secret for encryption
+        let session_key: Key<AES256> = crypto::derive_key_from_hash(hybrid_shared_secret);
+        let message: Plaintext = Plaintext::from("Hybrid post-quantum encrypted message");
+
+        let nonce: Nonce = crypto::generate_nonce();
+        let encrypted: Ciphertext<AES256> = crypto::encrypt(message, session_key, nonce);
+
+        // Sign with post-quantum signature scheme
+        let message_to_sign: Bytes = kyber_ciphertext.to_bytes() + encrypted.to_bytes();
+        let signature: Signature<Dilithium3> = crypto::sign(message_to_sign, dilithium_private);
+
+        console::println("Hybrid encryption with PQ signature completed");
+
+        // Verify and decrypt
+        let is_signature_valid: Bool = crypto::verify(message_to_sign, signature, dilithium_public);
+        console::println("Hybrid signature verification: " + is_signature_valid.to_string());
+
+        if is_signature_valid {
+            // Decrypt using hybrid approach
+            let decrypted_kyber_secret: SharedSecret<Kyber1024> = crypto::decapsulate(kyber_private, kyber_ciphertext);
+            let decrypted_combined_secret: Bytes = ecdh_secret.to_bytes() + decrypted_kyber_secret.to_bytes();
+            let decrypted_hybrid_secret: Hash<SHA3_256> = crypto::hash(decrypted_combined_secret);
+            let decrypted_session_key: Key<AES256> = crypto::derive_key_from_hash(decrypted_hybrid_secret);
+
+            let decrypted_message: Plaintext = crypto::decrypt(encrypted, decrypted_session_key, nonce);
+            console::println("Hybrid decryption: " + decrypted_message.to_string());
+        }
+    }
+
+    // Function demonstrating post-quantum cryptography performance
+    fn demonstrate_post_quantum_performance() -> Void {
+        console::println("\n=== Post-Quantum Cryptography Performance ===");
+
+        let start_time: UInt64 = time::now();
+
+        // Perform post-quantum operations
+        for i in 0..50 {
+            // Kyber key encapsulation
+            let (pq_public, pq_private): (PublicKey<Kyber1024>, PrivateKey<Kyber1024>) = crypto::generate_keypair();
+            let (shared_secret, ciphertext): (SharedSecret<Kyber1024>, Ciphertext<Kyber1024>) = crypto::encapsulate(pq_public);
+            let decapsulated: SharedSecret<Kyber1024> = crypto::decapsulate(pq_private, ciphertext);
+
+            // Dilithium signing
+            let message: Bytes = Bytes::from("Performance test " + i.to_string());
+            let signature: Signature<Dilithium3> = crypto::sign(message, pq_private);
+            let is_valid: Bool = crypto::verify(message, signature, pq_public);
+        }
+
+        let end_time: UInt64 = time::now();
+        let duration: UInt64 = end_time - start_time;
+
+        console::println("50 PQ operations completed in " + duration.to_string() + "ms");
+        console::println("Average time per operation: " + (duration / 50).to_string() + "ms");
+
+        // Compare with classical cryptography
+        let classical_start: UInt64 = time::now();
+
+        for i in 0..100 {
+            // Classical operations
+            let (ec_public, ec_private): (PublicKey<SecP256r1>, PrivateKey<SecP256r1>) = crypto::generate_keypair();
+            let ecdh_secret: SharedSecret<SecP256r1> = crypto::ecdh_compute(ec_private, ec_public);
+
+            let message: Bytes = Bytes::from("Classical test " + i.to_string());
+            let signature: Signature<Ed25519> = crypto::sign(message, ec_private);
+            let is_valid: Bool = crypto::verify(message, signature, ec_public);
+        }
+
+        let classical_end: UInt64 = time::now();
+        let classical_duration: UInt64 = classical_end - classical_start;
+
+        console::println("100 classical operations completed in " + classical_duration.to_string() + "ms");
+        console::println("Average time per classical operation: " + (classical_duration / 100).to_string() + "ms");
+
+        let performance_ratio: Float64 = classical_duration as Float64 / duration as Float64;
+        console::println("PQ/Classical performance ratio: " + performance_ratio.to_string());
+    }
+
+    // Function demonstrating hash-based signatures (SPHINCS+)
+    fn demonstrate_hash_based_signatures() -> Void {
+        console::println("\n=== Hash-Based Signatures (SPHINCS+) ===");
+
+        // Generate SPHINCS+ keypair
+        let (public_key, private_key): (PublicKey<SPHINCS128>, PrivateKey<SPHINCS128>) = crypto::generate_keypair();
+        console::println("Generated SPHINCS+ keypair");
+
+        // SPHINCS+ characteristics
+        console::println("SPHINCS+ properties:");
+        console::println("  Security: 128 bits");
+        console::println("  Public key size: 32 bytes");
+        console::println("  Private key size: 64 bytes");
+        console::println("  Signature size: ~8 KB");
+
+        // Sign message
+        let message: Bytes = Bytes::from("Hash-based signature message");
+        let signature: Signature<SPHINCS128> = crypto::sign(message, private_key);
+
+        console::println("SPHINCS+ signature: " + signature.size().to_string() + " bytes");
+
+        // Verify signature
+        let is_valid: Bool = crypto::verify(message, signature, public_key);
+        console::println("SPHINCS+ signature verification: " + is_valid.to_string());
+
+        // Demonstrate one-time signature property
+        let message2: Bytes = Bytes::from("Second message");
+        let signature2: Signature<SPHINCS128> = crypto::sign(message2, private_key);
+
+        console::println("Second SPHINCS+ signature: " + signature2.size().to_string() + " bytes");
+
+        // Signatures should be different even for same key (stateful)
+        let signatures_different: Bool = !signature.constant_time_compare(signature2);
+        console::println("SPHINCS+ signatures are unique: " + signatures_different.to_string());
+    }
+
+    // Function demonstrating lattice-based cryptography
+    fn demonstrate_lattice_crypto() -> Void {
+        console::println("\n=== Lattice-Based Cryptography ===");
+
+        // Demonstrate learning with errors (LWE) problem
+        console::println("Lattice-based cryptography properties:");
+        console::println("  Based on Learning With Errors (LWE) problem");
+        console::println("  Security reduction to worst-case lattice problems");
+        console::println("  Resistance to quantum attacks");
+        console::println("  Support for advanced functionalities");
+
+        // Generate multiple lattice-based keypairs
+        let algorithms: [String; 4] = ["Kyber-512".to_string(), "Kyber-768".to_string(), "Kyber-1024".to_string(), "Saber".to_string()];
+
+        for algorithm in algorithms {
+            console::println("Algorithm: " + algorithm);
+
+            // In a real implementation, we'd generate actual keypairs
+            // For demo, we'll show expected characteristics
+            let (pub_size, priv_size, sig_size): (Int32, Int32, Int32) = match algorithm {
+                "Kyber-512" => (800, 1600, 0),
+                "Kyber-768" => (1184, 2400, 0),
+                "Kyber-1024" => (1568, 3168, 0),
+                "Saber" => (672, 1344, 0),
+                _ => (0, 0, 0)
+            };
+
+            console::println("  Public key: " + pub_size.to_string() + " bytes");
+            console::println("  Private key: " + priv_size.to_string() + " bytes");
+            if sig_size > 0 {
+                console::println("  Signature: " + sig_size.to_string() + " bytes");
+            }
+        }
+    }
+
+    // Function demonstrating post-quantum security levels
+    fn demonstrate_security_levels() -> Void {
+        console::println("\n=== Post-Quantum Security Levels ===");
+
+        // NIST security categories
+        let security_categories: [String; 5] = [
+            "Level 1: 128-bit security".to_string(),
+            "Level 2: 192-bit security".to_string(),
+            "Level 3: 256-bit security".to_string(),
+            "Level 4: 384-bit security".to_string(),
+            "Level 5: 512-bit security".to_string()
+        ];
+
+        for category in security_categories {
+            console::println("NIST Security Category: " + category);
+        }
+
+        // Algorithm security mappings
+        console::println("\nAlgorithm Security Levels:");
+
+        let algorithm_security: HashMap<String, Int32> = HashMap::new();
+        // In a real implementation, this would be populated with actual mappings
+
+        let algorithms: [String; 6] = [
+            "Kyber-512".to_string(),
+            "Kyber-768".to_string(),
+            "Kyber-1024".to_string(),
+            "Dilithium-2".to_string(),
+            "Dilithium-3".to_string(),
+            "Dilithium-5".to_string()
+        ];
+
+        for algorithm in algorithms {
+            let nist_level: Int32 = match algorithm {
+                "Kyber-512" | "Dilithium-2" => 1,
+                "Kyber-768" | "Dilithium-3" => 3,
+                "Kyber-1024" | "Dilithium-5" => 5,
+                _ => 1
+            };
+
+            console::println("  " + algorithm + ": NIST Level " + nist_level.to_string());
+        }
+    }
+
+    // Main function
+    fn main() -> Int32 {
+        console::println("=== T4 Hash Functions and Post-Quantum Crypto Demo ===");
+
+        demonstrate_sha3_hashes();
+        demonstrate_shake_functions();
+        demonstrate_blake2_hashes();
+        demonstrate_hash_applications();
+        demonstrate_kyber_kem();
+        demonstrate_dilithium_signatures();
+        demonstrate_falcon_signatures();
+        demonstrate_hybrid_post_quantum();
+        demonstrate_post_quantum_performance();
+        demonstrate_hash_based_signatures();
+        demonstrate_lattice_crypto();
+        demonstrate_security_levels();
+
+        console::println("\n=== Hash and Post-Quantum Demo Complete ===");
+        0
+    }
+}
+
+// Example usage:
+// t4c hash_post_quantum.t4
+// ./hash_post_quantum
+
+// Expected output:
+// === T4 Hash Functions and Post-Quantum Crypto Demo ===
+// === SHA-3 Hash Functions ===
+// SHA3-224 hash: 28 bytes
+// SHA3-256 hash: 32 bytes
+// SHA3-384 hash: 48 bytes
+// SHA3-512 hash: 64 bytes
+// Different inputs produce different hashes: true
+// [... continues with SHAKE, BLAKE2, applications, post-quantum algorithms, etc.]

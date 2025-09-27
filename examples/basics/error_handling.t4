@@ -1,0 +1,477 @@
+// T4 Error Handling Example
+// Comprehensive demonstration of T4's error handling patterns and security considerations
+
+module ErrorHandlingDemo {
+    import "libcrypto.so" as crypto_lib;
+
+    config {
+        default_crypto_provider = "libcrypto";
+        post_quantum_enabled = true;
+        hardware_acceleration = true;
+    }
+
+    // === BASIC ERROR HANDLING PATTERNS ===
+
+    // Function that may fail with Result type
+    fn divide_numbers(dividend: Int32, divisor: Int32) -> Result<Int32, String> {
+        if divisor == 0 {
+            return Err("Division by zero is not allowed".to_string());
+        }
+
+        if dividend == Int32::MIN && divisor == -1 {
+            return Err("Overflow: minimum value divided by -1".to_string());
+        }
+
+        Ok(dividend / divisor)
+    }
+
+    // Function that may return None
+    fn find_user_by_id(id: Int32) -> Option<String> {
+        // Simulate user database
+        if id > 0 && id <= 1000 {
+            Some("User_".to_string() + id.to_string())
+        } else {
+            None
+        }
+    }
+
+    // Function that may fail with custom error type
+    enum ValidationError {
+        InvalidLength,
+        InvalidCharacters,
+        TooWeak,
+        SecurityViolation
+    }
+
+    fn validate_password(password: String) -> Result<String, ValidationError> {
+        if password.len() < 8 {
+            return Err(ValidationError::InvalidLength);
+        }
+
+        let mut has_upper: Bool = false;
+        let mut has_lower: Bool = false;
+        let mut has_digit: Bool = false;
+
+        for i in 0..password.len() {
+            let char: Char = password.char_at(i);
+
+            if char.is_uppercase() {
+                has_upper = true;
+            } else if char.is_lowercase() {
+                has_lower = true;
+            } else if char.is_digit() {
+                has_digit = true;
+            }
+        }
+
+        if !has_upper {
+            return Err(ValidationError::InvalidCharacters);
+        }
+
+        if !has_lower {
+            return Err(ValidationError::InvalidCharacters);
+        }
+
+        if !has_digit {
+            return Err(ValidationError::TooWeak);
+        }
+
+        Ok("Password is valid".to_string())
+    }
+
+    // === CRYPTOGRAPHIC ERROR HANDLING ===
+
+    // Secure function with cryptographic error handling
+    fn encrypt_sensitive_data(data: Plaintext, key: Key<AES256>) -> CryptoResult<Ciphertext<AES256>> {
+        // Validate key strength
+        if key.strength() < 256 {
+            return Err(CryptoError::WeakParameter);
+        }
+
+        // Check for timing attack vulnerabilities
+        if data.len() > 1_000_000 { // 1MB limit
+            return Err(CryptoError::SecurityViolation("Data too large".to_string()));
+        }
+
+        // Perform encryption with error handling
+        match crypto::encrypt(data, key) {
+            Ok(ciphertext) => {
+                // Wipe the key from memory after use
+                key.wipe();
+                Ok(ciphertext)
+            }
+            Err(e) => {
+                // Ensure key is wiped even on error
+                key.wipe();
+                Err(e)
+            }
+        }
+    }
+
+    // Function demonstrating secure error handling with memory wiping
+    fn process_with_security(data: Secret<Bytes>) -> CryptoResult<Bytes> {
+        let key: Key<AES256> = crypto::generate_key();
+        let plaintext: Plaintext = Plaintext::from(data);
+
+        match encrypt_sensitive_data(plaintext, key) {
+            Ok(ciphertext) => {
+                // Process the encrypted data
+                let result: Bytes = process_encrypted_data(ciphertext)?;
+                Ok(result)
+            }
+            Err(e) => {
+                // Log the error securely
+                log_security_event("Encryption failed: " + e.to_string());
+                Err(e)
+            }
+        }
+    }
+
+    // === ERROR PROPAGATION PATTERNS ===
+
+    // Function demonstrating error chaining with ?
+    fn process_user_data(user_id: Int32, data: String) -> Result<String, String> {
+        let user: String = find_user_by_id(user_id).ok_or("User not found".to_string())?;
+
+        let validation: String = validate_password(data.clone()).map_err(|e| {
+            match e {
+                ValidationError::InvalidLength => "Password too short".to_string(),
+                ValidationError::InvalidCharacters => "Password must contain uppercase, lowercase, and digits".to_string(),
+                ValidationError::TooWeak => "Password is too weak".to_string(),
+                ValidationError::SecurityViolation => "Security violation in password".to_string(),
+            }
+        })?;
+
+        let division: Int32 = divide_numbers(user_id, 2)?;
+
+        Ok("User: " + user + ", Data: " + data + ", Division: " + division.to_string())
+    }
+
+    // Function demonstrating comprehensive error handling
+    fn safe_file_operation(filename: String) -> Result<String, String> {
+        // Check if file exists
+        if !file::exists(filename) {
+            return Err("File does not exist: ".to_string() + filename);
+        }
+
+        // Try to open file
+        let file_handle: FileHandle = file::open(filename).map_err(|e| {
+            "Failed to open file: ".to_string() + e.to_string()
+        })?;
+
+        // Read file contents
+        let contents: String = file::read(file_handle).map_err(|e| {
+            "Failed to read file: ".to_string() + e.to_string()
+        })?;
+
+        // Validate contents
+        if contents.is_empty() {
+            return Err("File is empty".to_string());
+        }
+
+        // Process contents
+        let processed: String = process_file_contents(contents)?;
+
+        Ok(processed)
+    }
+
+    // === SECURITY-SPECIFIC ERROR HANDLING ===
+
+    // Function demonstrating security violation handling
+    fn secure_operation_with_monitoring(data: Bytes) -> Result<Bytes, String> {
+        // Security monitoring
+        let start_time: UInt64 = time::now();
+
+        // Check for suspicious patterns
+        if data.len() > 100_000 {
+            log_security_event("Large data processing attempt");
+            return Err("Data size exceeds security limit".to_string());
+        }
+
+        // Perform operation with timing protection
+        let result: Bytes = constant_time_process(data);
+
+        let end_time: UInt64 = time::now();
+        let duration: UInt64 = end_time - start_time;
+
+        // Check for timing anomalies
+        if duration > 5000 { // 5 second limit
+            log_security_event("Operation took too long: " + duration.to_string() + "ms");
+            return Err("Operation timed out".to_string());
+        }
+
+        Ok(result)
+    }
+
+    // Function demonstrating memory-safe error handling
+    fn memory_safe_operation() -> Result<String, String> {
+        let sensitive_data: Secret<String> = Secret::new("sensitive information");
+
+        match perform_critical_operation(sensitive_data) {
+            Ok(result) => {
+                // Memory is automatically wiped when sensitive_data goes out of scope
+                Ok(result)
+            }
+            Err(e) => {
+                // Even on error, memory is wiped
+                log_error("Critical operation failed: " + e);
+                Err(e)
+            }
+        }
+    }
+
+    // === RECOVERY PATTERNS ===
+
+    // Function demonstrating graceful degradation
+    fn robust_data_processing(data: String) -> String {
+        match parse_and_validate(data) {
+            Ok(processed) => processed,
+            Err(e) => {
+                log_warning("Data processing failed, using fallback: " + e);
+                use_fallback_processing(data)
+            }
+        }
+    }
+
+    // Function demonstrating retry logic with exponential backoff
+    fn retry_with_backoff<F, T, E>(mut operation: F, max_retries: Int32) -> Result<T, E>
+    where
+        F: FnMut() -> Result<T, E>
+    {
+        let mut delay: Int32 = 1;
+
+        for attempt in 0..max_retries {
+            match operation() {
+                Ok(result) => return Ok(result),
+                Err(e) => {
+                    if attempt == max_retries - 1 {
+                        return Err(e);
+                    }
+
+                    // Exponential backoff
+                    time::sleep(delay);
+                    delay = delay * 2;
+
+                    log_info("Retry attempt " + (attempt + 1).to_string() + " failed, retrying...");
+                }
+            }
+        }
+
+        unreachable!()
+    }
+
+    // === ERROR CONTEXT AND DEBUGGING ===
+
+    // Function demonstrating detailed error context
+    fn operation_with_context(filename: String, user_id: Int32) -> Result<String, String> {
+        // Add context to errors
+        let user: String = find_user_by_id(user_id)
+            .ok_or_else(|| {
+                "User not found: ".to_string() + user_id.to_string() + " in operation for file: " + filename
+            })?;
+
+        let file_contents: String = safe_file_operation(filename.clone())
+            .map_err(|e| {
+                "File operation failed for user ".to_string() + user + ": " + e
+            })?;
+
+        Ok("Processed file '".to_string() + filename + "' for user " + user)
+    }
+
+    // Function demonstrating error aggregation
+    fn batch_process_files(filenames: Vec<String>) -> Result<Vec<String>, Vec<String>> {
+        let mut results: Vec<String> = Vec::new();
+        let mut errors: Vec<String> = Vec::new();
+
+        for filename in filenames {
+            match safe_file_operation(filename.clone()) {
+                Ok(result) => results.push(result),
+                Err(error) => {
+                    let contextual_error: String = "Failed to process ".to_string() + filename + ": " + error;
+                    errors.push(contextual_error);
+                }
+            }
+        }
+
+        if errors.is_empty() {
+            Ok(results)
+        } else {
+            Err(errors)
+        }
+    }
+
+    // === HELPER FUNCTIONS ===
+
+    fn process_encrypted_data(ciphertext: Ciphertext<AES256>) -> Result<Bytes, String> {
+        // Simulate processing encrypted data
+        Ok(Bytes::from("processed_encrypted_data"))
+    }
+
+    fn process_file_contents(contents: String) -> Result<String, String> {
+        if contents.contains("ERROR") {
+            return Err("File contains error marker".to_string());
+        }
+        Ok("Processed: ".to_string() + contents)
+    }
+
+    fn constant_time_process(data: Bytes) -> Bytes {
+        // Simulate constant-time processing
+        let mut result: Bytes = Bytes::new();
+        for &byte_val in data.iter() {
+            result.push(byte_val ^ 0xFF); // Simple XOR for demo
+        }
+        result
+    }
+
+    fn perform_critical_operation(data: Secret<String>) -> Result<String, String> {
+        // Simulate a critical operation that might fail
+        if data.len() > 10 {
+            Err("Data too large for critical operation".to_string())
+        } else {
+            Ok("Critical operation succeeded".to_string())
+        }
+    }
+
+    fn parse_and_validate(data: String) -> Result<String, String> {
+        if data.is_empty() {
+            return Err("Empty data".to_string());
+        }
+
+        if !data.chars().all(|c| c.is_alphanumeric()) {
+            return Err("Invalid characters".to_string());
+        }
+
+        Ok("Validated: ".to_string() + data)
+    }
+
+    fn use_fallback_processing(data: String) -> String {
+        "Fallback: ".to_string() + data.len().to_string() + " characters processed"
+    }
+
+    fn log_security_event(message: String) -> Void {
+        console::println("[SECURITY] " + message);
+    }
+
+    fn log_error(message: String) -> Void {
+        console::println("[ERROR] " + message);
+    }
+
+    fn log_warning(message: String) -> Void {
+        console::println("[WARNING] " + message);
+    }
+
+    fn log_info(message: String) -> Void {
+        console::println("[INFO] " + message);
+    }
+
+    // === MAIN FUNCTION ===
+
+    fn main() -> Int32 {
+        console::println("=== Error Handling Demo ===");
+
+        // Demonstrate basic error handling
+        console::println("\n--- Basic Error Handling ---");
+
+        let division_results: [Result<Int32, String>; 4] = [
+            divide_numbers(10, 2),
+            divide_numbers(10, 0),
+            divide_numbers(5, 3),
+            divide_numbers(Int32::MIN, -1)
+        ];
+
+        for (i, result) in division_results.iter().enumerate() {
+            match result {
+                Ok(val) => console::println("Division " + i.to_string() + " succeeded: " + val.to_string()),
+                Err(error) => console::println("Division " + i.to_string() + " failed: " + error)
+            }
+        }
+
+        // Demonstrate Option handling
+        console::println("\n--- Option Handling ---");
+
+        let user_ids: [Int32; 4] = [1, 500, -1, 2000];
+
+        for id in user_ids {
+            match find_user_by_id(id) {
+                Some(user) => console::println("Found user: " + user),
+                None => console::println("No user found for id: " + id.to_string())
+            }
+        }
+
+        // Demonstrate custom error types
+        console::println("\n--- Custom Error Types ---");
+
+        let passwords: [String; 4] = [
+            "weak",                    // Too short
+            "nouppercase123",         // No uppercase
+            "NOLOWERCASE123",         // No lowercase
+            "ValidPassword123"        // Valid
+        ];
+
+        for password in passwords {
+            match validate_password(password) {
+                Ok(message) => console::println("✓ " + message),
+                Err(error) => {
+                    let error_msg: String = match error {
+                        ValidationError::InvalidLength => "Password too short",
+                        ValidationError::InvalidCharacters => "Missing required character types",
+                        ValidationError::TooWeak => "Password is too weak",
+                        ValidationError::SecurityViolation => "Security violation"
+                    };
+                    console::println("✗ " + error_msg + " for password: " + password);
+                }
+            }
+        }
+
+        // Demonstrate error propagation
+        console::println("\n--- Error Propagation ---");
+
+        let test_cases: [(Int32, String); 3] = [
+            (1, "ValidPassword123"),
+            (999, "weak"),
+            (500, "ValidPassword123")
+        ];
+
+        for (user_id, data) in test_cases {
+            match process_user_data(user_id, data) {
+                Ok(result) => console::println("✓ " + result),
+                Err(error) => console::println("✗ " + error)
+            }
+        }
+
+        // Demonstrate security error handling
+        console::println("\n--- Security Error Handling ---");
+
+        let sensitive_data: Secret<Bytes> = Secret::new(Bytes::from("sensitive data"));
+        match process_with_security(sensitive_data) {
+            Ok(result) => console::println("✓ Security operation succeeded"),
+            Err(error) => console::println("✗ Security operation failed: " + error)
+        }
+
+        // Demonstrate recovery patterns
+        console::println("\n--- Recovery Patterns ---");
+
+        let test_data: [String; 3] = ["valid_data", "", "invalid@data"];
+
+        for data in test_data {
+            let result: String = robust_data_processing(data);
+            console::println("Robust processing of '" + data + "': " + result);
+        }
+
+        console::println("\n=== Error Handling Demo Complete ===");
+        0
+    }
+}
+
+// Example usage:
+// t4c error_handling.t4
+// ./error_handling
+
+// Expected output:
+// === Error Handling Demo ===
+// --- Basic Error Handling ---
+// Division 0 succeeded: 5
+// Division 1 failed: Division by zero is not allowed
+// Division 2 succeeded: 1
+// Division 3 failed: Overflow: minimum value divided by -1
+// [... continues with Option, custom errors, propagation, security, and recovery examples ...]

@@ -1,0 +1,124 @@
+// Metaprogramming Features Example
+// Demonstrates compile-time evaluation, macros, and code generation
+
+module Metaprogramming {
+
+// Compile-time function execution
+compile_time fn fibonacci(n: usize) -> usize {
+    if n <= 1 {
+        n
+    } else {
+        fibonacci(n - 1) + fibonacci(n - 2)
+    }
+}
+
+// Macro definitions
+macro_rules! vec {
+    ($($x:expr),*) => {
+        {
+            let mut temp_vec = Vec::new();
+            $(
+                temp_vec.push($x);
+            )*
+            temp_vec
+        }
+    };
+}
+
+// Procedural macros
+proc_macro derive_serialize {
+    // Generate serialization code for structs
+    quote! {
+        impl Serialize for #struct_name {
+            fn serialize(&self) -> Vec<u8> {
+                // Generated serialization logic
+                Vec::new()
+            }
+        }
+    }
+}
+
+// Template metaprogramming
+template_<Container<T>> fn container_size(c: Container<T>) -> usize {
+    c.len()
+}
+
+// Generic specializations
+specialization_<Vec<T>> for Container<T> {
+    fn len(&self) -> usize {
+        self.len()
+    }
+}
+
+// Conditional compilation
+cfg(feature = "serde") {
+    use serde::{Serialize, Deserialize};
+
+    #[derive(Serialize, Deserialize)]
+    struct SerializableStruct {
+        data: String,
+    }
+}
+
+// Static analysis and optimization hints
+static {
+    debug_ {
+        println!("Debug mode enabled");
+    }
+
+    release_ {
+        // Optimized release code
+    }
+}
+
+// Const evaluation for cryptographic constants
+const EVALUATION_ {
+    const RSA_KEY_SIZE: usize = 2048;
+    const AES_BLOCK_SIZE: usize = 16;
+    const SECURITY_PARAMETER: usize = 128;
+}
+
+// Feature gates
+feature_(post_quantum) {
+    // Post-quantum cryptographic implementations
+    fn kyber_keygen() -> Key<Kyber1024> {
+        // Implementation
+        Key::new()
+    }
+}
+
+#[derive_serialize]
+struct DataStructure {
+    id: u64,
+    payload: Vec<u8>,
+}
+
+// Template instantiation
+fn process_container() {
+    let vec_instance: Vec<i32> = Vec::new();
+    let size = container_size(vec_instance);
+
+    println!("Container size: {}", size);
+}
+
+// Macro usage
+fn main() {
+    let numbers = vec![1, 2, 3, 4, 5];
+
+    // Compile-time fibonacci
+    const FIB_10: usize = fibonacci(10);
+    println!("Fibonacci(10) = {}", FIB_10);
+
+    // Template metaprogramming
+    process_container();
+
+    // Conditional compilation result
+    let data = SerializableStruct {
+        id: 1,
+        payload: b"test".to_vec(),
+    };
+
+    println!("Data ID: {}", data.id);
+}
+
+}

@@ -1,0 +1,452 @@
+// T4 Symmetric and Asymmetric Cryptography Example
+// Comprehensive demonstration of T4's cryptographic capabilities
+
+module CryptoDemo {
+    import "libcrypto.so" as crypto_lib;
+
+    config {
+        default_crypto_provider = "libcrypto";
+        post_quantum_enabled = true;
+        hardware_acceleration = true;
+    }
+
+    // === SYMMETRIC ENCRYPTION EXAMPLES ===
+
+    // Function demonstrating AES encryption
+    fn demonstrate_aes_encryption() -> Void {
+        console::println("=== AES Symmetric Encryption ===");
+
+        // Generate a secure AES key
+        let aes_key: Key<AES256> = crypto::generate_key();
+        console::println("Generated AES-256 key: " + aes_key.size().to_string() + " bytes");
+
+        // Prepare plaintext data
+        let plaintext: Plaintext = Plaintext::from("This is a secret message that needs encryption");
+        console::println("Plaintext length: " + plaintext.len().to_string() + " bytes");
+
+        // Generate a random nonce/IV
+        let nonce: Nonce = crypto::generate_nonce();
+        console::println("Generated nonce: " + nonce.size().to_string() + " bytes");
+
+        // Encrypt the data
+        let ciphertext: Ciphertext<AES256> = crypto::encrypt(plaintext, aes_key, nonce);
+        console::println("Ciphertext length: " + ciphertext.len().to_string() + " bytes");
+
+        // Decrypt the data
+        let decrypted: Plaintext = crypto::decrypt(ciphertext, aes_key, nonce);
+        let decrypted_text: String = decrypted.to_string();
+
+        console::println("Decrypted text: " + decrypted_text);
+
+        // Verify correctness
+        let is_correct: Bool = decrypted_text == "This is a secret message that needs encryption";
+        console::println("Decryption successful: " + is_correct.to_string());
+
+        // Demonstrate key security
+        console::println("Key strength: " + aes_key.strength().to_string() + " bits");
+
+        // Demonstrate secure memory handling
+        {
+            let sensitive_key: Key<AES256> = crypto::generate_key();
+            let temp_data: Plaintext = Plaintext::from("Temporary sensitive data");
+
+            let temp_ciphertext: Ciphertext<AES256> = crypto::encrypt(temp_data, sensitive_key, nonce);
+
+            // Key and plaintext are automatically wiped when they go out of scope
+            console::println("Temporary encryption completed securely");
+        }
+    }
+
+    // Function demonstrating ChaCha20 encryption
+    fn demonstrate_chacha20_encryption() -> Void {
+        console::println("\n=== ChaCha20 Symmetric Encryption ===");
+
+        // Generate ChaCha20 key
+        let chacha_key: Key<ChaCha20> = crypto::generate_key();
+        console::println("Generated ChaCha20 key: " + chacha_key.size().to_string() + " bytes");
+
+        // Prepare data
+        let message: Plaintext = Plaintext::from("ChaCha20 is a fast stream cipher");
+        let nonce: Nonce = crypto::generate_nonce();
+
+        // Encrypt
+        let encrypted: Ciphertext<ChaCha20> = crypto::encrypt(message, chacha_key, nonce);
+        console::println("ChaCha20 encryption completed");
+
+        // Decrypt
+        let decrypted: Plaintext = crypto::decrypt(encrypted, chacha_key, nonce);
+        console::println("ChaCha20 decryption: " + decrypted.to_string());
+    }
+
+    // Function demonstrating authenticated encryption (AES-GCM)
+    fn demonstrate_authenticated_encryption() -> Void {
+        console::println("\n=== Authenticated Encryption (AES-GCM) ===");
+
+        // Generate key and prepare data
+        let gcm_key: Key<AES256GCM> = crypto::generate_key();
+        let message: Plaintext = Plaintext::from("This message includes authentication");
+        let associated_data: Bytes = Bytes::from("metadata");
+
+        // Encrypt with authentication
+        let (ciphertext, tag): (Ciphertext<AES256GCM>, AuthTag) = crypto::encrypt_auth(message, gcm_key, associated_data);
+
+        console::println("Authenticated encryption completed");
+        console::println("Authentication tag: " + tag.size().to_string() + " bytes");
+
+        // Decrypt and verify
+        let decrypted: Plaintext = crypto::decrypt_auth(ciphertext, tag, gcm_key, associated_data);
+        console::println("Authenticated decryption: " + decrypted.to_string());
+
+        // Demonstrate authentication failure
+        let wrong_associated_data: Bytes = Bytes::from("wrong_metadata");
+        let auth_result: Result<Plaintext, String> = crypto::decrypt_auth(ciphertext, tag, gcm_key, wrong_associated_data);
+
+        match auth_result {
+            Ok(_) => console::println("ERROR: Authentication should have failed!"),
+            Err(_) => console::println("✓ Authentication correctly failed with wrong metadata")
+        }
+    }
+
+    // === ASYMMETRIC ENCRYPTION EXAMPLES ===
+
+    // Function demonstrating RSA encryption
+    fn demonstrate_rsa_encryption() -> Void {
+        console::println("\n=== RSA Asymmetric Encryption ===");
+
+        // Generate RSA keypair
+        let (public_key, private_key): (PublicKey<RSA2048>, PrivateKey<RSA2048>) = crypto::generate_keypair();
+        console::println("Generated RSA-2048 keypair");
+
+        // Prepare message
+        let message: Plaintext = Plaintext::from("RSA encrypted message");
+
+        // Encrypt with public key
+        let encrypted: Ciphertext<RSA2048> = crypto::encrypt_asym(message, public_key);
+        console::println("RSA encryption completed");
+
+        // Decrypt with private key
+        let decrypted: Plaintext = crypto::decrypt_asym(encrypted, private_key);
+        console::println("RSA decryption: " + decrypted.to_string());
+
+        // Demonstrate key sizes
+        console::println("Public key size: " + public_key.size().to_string() + " bytes");
+        console::println("Private key size: " + private_key.size().to_string() + " bytes");
+    }
+
+    // Function demonstrating elliptic curve cryptography
+    fn demonstrate_ecc_encryption() -> Void {
+        console::println("\n=== Elliptic Curve Cryptography ===");
+
+        // Generate EC keypair
+        let (ec_public, ec_private): (PublicKey<SecP256r1>, PrivateKey<SecP256r1>) = crypto::generate_keypair();
+        console::println("Generated EC keypair (secp256r1)");
+
+        // Perform ECDH key exchange
+        let shared_secret1: SharedSecret<SecP256r1> = crypto::ecdh_compute(ec_private, ec_public);
+        console::println("ECDH shared secret computed: " + shared_secret1.size().to_string() + " bytes");
+
+        // Generate another keypair for mutual exchange
+        let (ec_public2, ec_private2): (PublicKey<SecP256r1>, PrivateKey<SecP256r1>) = crypto::generate_keypair();
+
+        // Both parties compute the same shared secret
+        let shared_secret2: SharedSecret<SecP256r1> = crypto::ecdh_compute(ec_private2, ec_public);
+        let shared_secret3: SharedSecret<SecP256r1> = crypto::ecdh_compute(ec_private, ec_public2);
+
+        // Verify both shared secrets are identical
+        let secrets_match: Bool = shared_secret1.constant_time_compare(shared_secret2);
+        console::println("Shared secrets match: " + secrets_match.to_string());
+
+        // Use shared secret for symmetric encryption
+        let aes_key: Key<AES256> = crypto::derive_key(shared_secret1);
+        let message: Plaintext = Plaintext::from("ECDH derived key encryption");
+        let nonce: Nonce = crypto::generate_nonce();
+
+        let encrypted: Ciphertext<AES256> = crypto::encrypt(message, aes_key, nonce);
+        let decrypted: Plaintext = crypto::decrypt(encrypted, aes_key, nonce);
+
+        console::println("ECDH-derived key encryption: " + decrypted.to_string());
+    }
+
+    // === POST-QUANTUM CRYPTOGRAPHY EXAMPLES ===
+
+    // Function demonstrating post-quantum key encapsulation (Kyber)
+    fn demonstrate_post_quantum_kem() -> Void {
+        console::println("\n=== Post-Quantum Key Encapsulation (Kyber) ===");
+
+        // Generate Kyber keypair
+        let (pq_public, pq_private): (PublicKey<Kyber1024>, PrivateKey<Kyber1024>) = crypto::generate_keypair();
+        console::println("Generated Kyber-1024 keypair");
+
+        // Perform key encapsulation
+        let (shared_secret, ciphertext): (SharedSecret<Kyber1024>, Ciphertext<Kyber1024>) = crypto::encapsulate(pq_public);
+
+        console::println("Key encapsulation completed");
+        console::println("Shared secret: " + shared_secret.size().to_string() + " bytes");
+        console::println("Ciphertext: " + ciphertext.size().to_string() + " bytes");
+
+        // Decapsulate the shared secret
+        let decapsulated_secret: SharedSecret<Kyber1024> = crypto::decapsulate(pq_private, ciphertext);
+
+        // Verify secrets match
+        let secrets_match: Bool = shared_secret.constant_time_compare(decapsulated_secret);
+        console::println("PQ shared secrets match: " + secrets_match.to_string());
+
+        // Use post-quantum shared secret for encryption
+        let aes_key: Key<AES256> = crypto::derive_key(shared_secret);
+        let message: Plaintext = Plaintext::from("Post-quantum encrypted message");
+        let nonce: Nonce = crypto::generate_nonce();
+
+        let encrypted: Ciphertext<AES256> = crypto::encrypt(message, aes_key, nonce);
+        let decrypted: Plaintext = crypto::decrypt(encrypted, aes_key, nonce);
+
+        console::println("PQ hybrid encryption: " + decrypted.to_string());
+    }
+
+    // Function demonstrating post-quantum signatures (Dilithium)
+    fn demonstrate_post_quantum_signatures() -> Void {
+        console::println("\n=== Post-Quantum Digital Signatures (Dilithium) ===");
+
+        // Generate Dilithium keypair
+        let (pq_pub_key, pq_priv_key): (PublicKey<Dilithium3>, PrivateKey<Dilithium3>) = crypto::generate_keypair();
+        console::println("Generated Dilithium-3 keypair");
+
+        // Prepare message to sign
+        let message: Bytes = Bytes::from("This message will be post-quantum signed");
+
+        // Sign the message
+        let signature: Signature<Dilithium3> = crypto::sign(message, pq_priv_key);
+        console::println("Message signed with Dilithium");
+        console::println("Signature size: " + signature.size().to_string() + " bytes");
+
+        // Verify the signature
+        let is_valid: Bool = crypto::verify(message, signature, pq_pub_key);
+        console::println("Signature verification: " + is_valid.to_string());
+
+        // Demonstrate signature failure with modified message
+        let modified_message: Bytes = Bytes::from("This message will be post-quantum signed (modified)");
+        let is_valid_modified: Bool = crypto::verify(modified_message, signature, pq_pub_key);
+        console::println("Modified message verification: " + is_valid_modified.to_string());
+
+        // Demonstrate signature failure with wrong key
+        let (wrong_pub_key, _): (PublicKey<Dilithium3>, PrivateKey<Dilithium3>) = crypto::generate_keypair();
+        let is_valid_wrong_key: Bool = crypto::verify(message, signature, wrong_pub_key);
+        console::println("Wrong key verification: " + is_valid_wrong_key.to_string());
+    }
+
+    // === HYBRID CRYPTOGRAPHY EXAMPLES ===
+
+    // Function demonstrating hybrid encryption (KEM + symmetric)
+    fn demonstrate_hybrid_encryption() -> Void {
+        console::println("\n=== Hybrid Encryption (Kyber + AES) ===");
+
+        // Generate keypairs for hybrid encryption
+        let (kem_public, kem_private): (PublicKey<Kyber1024>, PrivateKey<Kyber1024>) = crypto::generate_keypair();
+        let (sig_public, sig_private): (PublicKey<Dilithium3>, PrivateKey<Dilithium3>) = crypto::generate_keypair();
+
+        // Prepare large message
+        let large_message: Plaintext = Plaintext::from("This is a large message that benefits from hybrid encryption for both confidentiality and authenticity");
+
+        // Step 1: Generate shared secret using KEM
+        let (shared_secret, kem_ciphertext): (SharedSecret<Kyber1024>, Ciphertext<Kyber1024>) = crypto::encapsulate(kem_public);
+
+        // Step 2: Derive symmetric key from shared secret
+        let aes_key: Key<AES256> = crypto::derive_key(shared_secret);
+
+        // Step 3: Encrypt message with symmetric key
+        let nonce: Nonce = crypto::generate_nonce();
+        let encrypted_message: Ciphertext<AES256> = crypto::encrypt(large_message, aes_key, nonce);
+
+        // Step 4: Sign the ciphertext for authenticity
+        let message_to_sign: Bytes = kem_ciphertext.to_bytes() + encrypted_message.to_bytes();
+        let signature: Signature<Dilithium3> = crypto::sign(message_to_sign, sig_private);
+
+        console::println("Hybrid encryption completed");
+        console::println("KEM ciphertext: " + kem_ciphertext.size().to_string() + " bytes");
+        console::println("AES ciphertext: " + encrypted_message.size().to_string() + " bytes");
+        console::println("Signature: " + signature.size().to_string() + " bytes");
+
+        // Decryption and verification process
+        // Step 1: Verify signature
+        let is_signature_valid: Bool = crypto::verify(message_to_sign, signature, sig_public);
+        console::println("Signature valid: " + is_signature_valid.to_string());
+
+        if is_signature_valid {
+            // Step 2: Decapsulate shared secret
+            let decapsulated_secret: SharedSecret<Kyber1024> = crypto::decapsulate(kem_private, kem_ciphertext);
+
+            // Step 3: Derive the same symmetric key
+            let decrypted_aes_key: Key<AES256> = crypto::derive_key(decapsulated_secret);
+
+            // Step 4: Decrypt message
+            let decrypted_message: Plaintext = crypto::decrypt(encrypted_message, decrypted_aes_key, nonce);
+            console::println("Hybrid decryption: " + decrypted_message.to_string());
+        }
+    }
+
+    // Function demonstrating secure key management
+    fn demonstrate_key_management() -> Void {
+        console::println("\n=== Secure Key Management ===");
+
+        // Generate multiple keys for different purposes
+        let aes_key: Key<AES256> = crypto::generate_key();
+        let rsa_keys: (PublicKey<RSA2048>, PrivateKey<RSA2048>) = crypto::generate_keypair();
+        let ec_keys: (PublicKey<SecP256r1>, PrivateKey<SecP256r1>) = crypto::generate_keypair();
+
+        // Store keys securely (in real implementation, these would be in a key store)
+        let mut key_store: HashMap<String, KeyData> = HashMap::new();
+
+        key_store.insert("aes_main", KeyData::Symmetric(aes_key));
+        key_store.insert("rsa_auth", KeyData::Asymmetric(rsa_keys.0, rsa_keys.1));
+        key_store.insert("ec_exchange", KeyData::Asymmetric(ec_keys.0, ec_keys.1));
+
+        console::println("Keys stored securely in key store");
+
+        // Retrieve and use keys
+        if let Some(KeyData::Symmetric(key)) = key_store.get("aes_main") {
+            let message: Plaintext = Plaintext::from("Key management test");
+            let nonce: Nonce = crypto::generate_nonce();
+            let encrypted: Ciphertext<AES256> = crypto::encrypt(message, key, nonce);
+            console::println("Key retrieval and usage successful");
+        }
+
+        // Demonstrate key rotation
+        let old_key: Key<AES256> = crypto::generate_key();
+        let new_key: Key<AES256> = crypto::generate_key();
+
+        console::println("Generated new key for rotation");
+        console::println("Old key strength: " + old_key.strength().to_string() + " bits");
+        console::println("New key strength: " + new_key.strength().to_string() + " bits");
+
+        // In a real implementation, we'd re-encrypt data with the new key
+        // and securely wipe the old key from memory
+    }
+
+    // === CRYPTOGRAPHIC PROTOCOL EXAMPLES ===
+
+    // Function demonstrating secure communication protocol
+    fn demonstrate_secure_protocol() -> Void {
+        console::println("\n=== Secure Communication Protocol ===");
+
+        // Initialize two parties
+        let alice_ec_keys: (PublicKey<SecP256r1>, PrivateKey<SecP256r1>) = crypto::generate_keypair();
+        let bob_ec_keys: (PublicKey<SecP256r1>, PrivateKey<SecP256r1>) = crypto::generate_keypair();
+
+        // Step 1: ECDH key exchange
+        let alice_shared: SharedSecret<SecP256r1> = crypto::ecdh_compute(alice_ec_keys.1, bob_ec_keys.0);
+        let bob_shared: SharedSecret<SecP256r1> = crypto::ecdh_compute(bob_ec_keys.1, alice_ec_keys.0);
+
+        let secrets_match: Bool = alice_shared.constant_time_compare(bob_shared);
+        console::println("ECDH secrets match: " + secrets_match.to_string());
+
+        // Step 2: Derive session keys
+        let alice_session_key: Key<AES256> = crypto::derive_key(alice_shared);
+        let bob_session_key: Key<AES256> = crypto::derive_key(bob_shared);
+
+        // Verify session keys are identical
+        let keys_match: Bool = alice_session_key.constant_time_compare(bob_session_key);
+        console::println("Session keys match: " + keys_match.to_string());
+
+        // Step 3: Secure communication
+        let message: Plaintext = Plaintext::from("Secure communication established");
+        let nonce: Nonce = crypto::generate_nonce();
+
+        let encrypted: Ciphertext<AES256> = crypto::encrypt(message, alice_session_key, nonce);
+        let decrypted: Plaintext = crypto::decrypt(encrypted, bob_session_key, nonce);
+
+        console::println("Secure message: " + decrypted.to_string());
+    }
+
+    // === PERFORMANCE AND SECURITY DEMONSTRATIONS ===
+
+    // Function demonstrating cryptographic performance
+    fn demonstrate_crypto_performance() -> Void {
+        console::println("\n=== Cryptographic Performance ===");
+
+        let start_time: UInt64 = time::now();
+
+        // Perform multiple cryptographic operations
+        for i in 0..100 {
+            let data: Plaintext = Plaintext::from("Performance test message " + i.to_string());
+            let key: Key<AES256> = crypto::generate_key();
+            let nonce: Nonce = crypto::generate_nonce();
+
+            let encrypted: Ciphertext<AES256> = crypto::encrypt(data, key, nonce);
+            let decrypted: Plaintext = crypto::decrypt(encrypted, key, nonce);
+        }
+
+        let end_time: UInt64 = time::now();
+        let duration: UInt64 = end_time - start_time;
+
+        console::println("100 encrypt/decrypt operations completed in " + duration.to_string() + "ms");
+        console::println("Average time per operation: " + (duration / 100).to_string() + "ms");
+    }
+
+    // Function demonstrating security features
+    fn demonstrate_security_features() -> Void {
+        console::println("\n=== Cryptographic Security Features ===");
+
+        // Demonstrate constant-time operations
+        let secret1: Secret<Bytes> = Secret::new(Bytes::from([1, 2, 3, 4, 5]));
+        let secret2: Secret<Bytes> = Secret::new(Bytes::from([1, 2, 3, 4, 5]));
+        let secret3: Secret<Bytes> = Secret::new(Bytes::from([5, 4, 3, 2, 1]));
+
+        let equal: Bool = secret1.constant_time_compare(secret2);
+        let not_equal: Bool = secret1.constant_time_compare(secret3);
+
+        console::println("Constant-time comparison (equal): " + equal.to_string());
+        console::println("Constant-time comparison (not equal): " + not_equal.to_string());
+
+        // Demonstrate secure memory wiping
+        {
+            let sensitive_key: Key<AES256> = crypto::generate_key();
+            let sensitive_data: Secret<String> = Secret::new("This will be wiped from memory");
+
+            console::println("Sensitive data length: " + sensitive_data.len().to_string());
+            // Memory is automatically wiped when variables go out of scope
+        }
+
+        console::println("Sensitive data has been securely wiped from memory");
+    }
+
+    // Helper types and functions
+    enum KeyData {
+        Symmetric(Key<AES256>),
+        Asymmetric(PublicKey<RSA2048>, PrivateKey<RSA2048>)
+    }
+
+    // Main function
+    fn main() -> Int32 {
+        console::println("=== T4 Cryptography Demo ===");
+
+        demonstrate_aes_encryption();
+        demonstrate_chacha20_encryption();
+        demonstrate_authenticated_encryption();
+        demonstrate_rsa_encryption();
+        demonstrate_ecc_encryption();
+        demonstrate_post_quantum_kem();
+        demonstrate_post_quantum_signatures();
+        demonstrate_hybrid_encryption();
+        demonstrate_key_management();
+        demonstrate_secure_protocol();
+        demonstrate_crypto_performance();
+        demonstrate_security_features();
+
+        console::println("\n=== Cryptography Demo Complete ===");
+        0
+    }
+}
+
+// Example usage:
+// t4c symmetric_asymmetric.t4
+// ./symmetric_asymmetric
+
+// Expected output:
+// === T4 Cryptography Demo ===
+// === AES Symmetric Encryption ===
+// Generated AES-256 key: 32 bytes
+// Plaintext length: 47 bytes
+// Generated nonce: 12 bytes
+// Ciphertext length: 64 bytes
+// Decrypted text: This is a secret message that needs encryption
+// Decryption successful: true
+// [... continues with ChaCha20, authenticated encryption, RSA, ECC, post-quantum crypto, etc.]

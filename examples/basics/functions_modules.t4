@@ -1,0 +1,367 @@
+// T4 Functions and Modules Example
+// Comprehensive demonstration of T4's function system and module organization
+
+module FunctionsModulesDemo {
+    import "libcrypto.so" as crypto_lib;
+
+    config {
+        default_crypto_provider = "libcrypto";
+        post_quantum_enabled = true;
+        hardware_acceleration = true;
+    }
+
+    // === FUNCTION EXAMPLES ===
+
+    // Simple function with no parameters
+    fn greet() -> Void {
+        console::println("Hello from a simple function!");
+    }
+
+    // Function with parameters
+    fn greet_person(name: String, age: Int32) -> Void {
+        console::println("Hello, " + name + "! You are " + age.to_string() + " years old.");
+    }
+
+    // Function with return value
+    fn add_numbers(a: Int32, b: Int32) -> Int32 {
+        a + b
+    }
+
+    // Function with multiple return values using tuple
+    fn divide_and_remainder(dividend: Int32, divisor: Int32) -> (Int32, Int32) {
+        (dividend / divisor, dividend % divisor)
+    }
+
+    // Function with default parameters
+    fn create_message(text: String, prefix: String = "INFO") -> String {
+        prefix + ": " + text
+    }
+
+    // Recursive function
+    fn factorial(n: UInt64) -> UInt64 {
+        if n <= 1 {
+            1
+        } else {
+            n * factorial(n - 1)
+        }
+    }
+
+    // Generic function
+    fn find_max<T>(a: T, b: T) -> T
+    where
+        T: Comparable
+    {
+        if a > b { a } else { b }
+    }
+
+    // Higher-order function
+    fn apply_twice<F, T>(func: F, value: T) -> T
+    where
+        F: Fn(T) -> T
+    {
+        func(func(value))
+    }
+
+    // Function with variable arguments
+    fn sum_all(numbers: Int32...) -> Int32 {
+        let mut sum: Int32 = 0;
+        for num in numbers {
+            sum = sum + num;
+        }
+        sum
+    }
+
+    // === MODULE SYSTEM EXAMPLES ===
+
+    // Nested module for mathematical operations
+    module MathUtils {
+        import "libcrypto.so" as crypto_lib;
+
+        config {
+            default_crypto_provider = "libcrypto";
+            post_quantum_enabled = false;
+            hardware_acceleration = false;
+        }
+
+        // Module-level constants
+        const PI: Float64 = 3.141592653589793;
+        const E: Float64 = 2.718281828459045;
+
+        // Public functions (exported)
+        export fn square(x: Float64) -> Float64 {
+            x * x
+        }
+
+        export fn cube(x: Float64) -> Float64 {
+            x * x * x
+        }
+
+        export fn power(base: Float64, exponent: Int32) -> Float64 {
+            if exponent == 0 {
+                1.0
+            } else if exponent > 0 {
+                base * power(base, exponent - 1)
+            } else {
+                1.0 / power(base, -exponent)
+            }
+        }
+
+        export fn absolute_value(x: Float64) -> Float64 {
+            if x < 0.0 { -x } else { x }
+        }
+
+        // Private function (not exported)
+        fn internal_helper(x: Float64) -> Float64 {
+            x * PI
+        }
+
+        // Function using internal helper
+        export fn circle_area(radius: Float64) -> Float64 {
+            let scaled_radius: Float64 = internal_helper(radius);
+            scaled_radius // This would be: radius * PI, but simplified for demo
+        }
+
+        // Trigonometric functions
+        export fn sine(angle_radians: Float64) -> Float64 {
+            // Simplified sine implementation for demo
+            angle_radians - power(angle_radians, 3) / 6.0
+        }
+
+        export fn cosine(angle_radians: Float64) -> Float64 {
+            // Simplified cosine implementation for demo
+            1.0 - power(angle_radians, 2) / 2.0
+        }
+    }
+
+    // Module for string utilities
+    module StringUtils {
+        import "libcrypto.so" as crypto_lib;
+
+        config {
+            default_crypto_provider = "libcrypto";
+            post_quantum_enabled = false;
+            hardware_acceleration = false;
+        }
+
+        // String manipulation functions
+        export fn reverse_string(s: String) -> String {
+            let mut result: String = "".to_string();
+            let length: Int32 = s.len();
+
+            for i in 0..length {
+                let char: Char = s.char_at(length - 1 - i);
+                result = result + char.to_string();
+            }
+
+            result
+        }
+
+        export fn is_palindrome(s: String) -> Bool {
+            let reversed: String = reverse_string(s);
+            s == reversed
+        }
+
+        export fn count_words(text: String) -> Int32 {
+            let mut count: Int32 = 0;
+            let mut in_word: Bool = false;
+
+            for i in 0..text.len() {
+                let char: Char = text.char_at(i);
+
+                if char.is_alphabetic() {
+                    if !in_word {
+                        count = count + 1;
+                        in_word = true;
+                    }
+                } else {
+                    in_word = false;
+                }
+            }
+
+            count
+        }
+
+        export fn capitalize_words(text: String) -> String {
+            let mut result: String = "".to_string();
+            let mut capitalize_next: Bool = true;
+
+            for i in 0..text.len() {
+                let char: Char = text.char_at(i);
+
+                if char.is_alphabetic() {
+                    if capitalize_next {
+                        result = result + char.to_uppercase().to_string();
+                        capitalize_next = false;
+                    } else {
+                        result = result + char.to_lowercase().to_string();
+                    }
+                } else {
+                    result = result + char.to_string();
+                    if char == ' ' || char == '\t' || char == '\n' {
+                        capitalize_next = true;
+                    }
+                }
+            }
+
+            result
+        }
+    }
+
+    // Module for cryptographic utilities
+    module CryptoUtils {
+        import "libcrypto.so" as crypto_lib;
+
+        config {
+            default_crypto_provider = "libcrypto";
+            post_quantum_enabled = true;
+            hardware_acceleration = true;
+        }
+
+        // Secure password hashing
+        export fn hash_password(password: String, salt: Salt) -> Hash<SHA3_256> {
+            let combined: String = password + salt.to_string();
+            let data: Bytes = Bytes::from(combined.as_bytes());
+            crypto::hash(data)
+        }
+
+        // Verify password hash
+        export fn verify_password(password: String, salt: Salt, expected_hash: Hash<SHA3_256>) -> Bool {
+            let computed_hash: Hash<SHA3_256> = hash_password(password, salt);
+            computed_hash.constant_time_compare(expected_hash)
+        }
+
+        // Generate secure random string
+        export fn generate_random_string(length: Int32) -> String {
+            let random_bytes: Bytes = crypto::random::secure_bytes(length as UInt32);
+            let mut result: String = "".to_string();
+
+            for &byte_val in random_bytes.iter() {
+                let char_code: Int32 = (byte_val % 62) as Int32; // 62 possible characters
+                let char: Char = match char_code {
+                    0..26 => ('A' as Int32 + char_code) as Char,      // A-Z
+                    26..52 => ('a' as Int32 + char_code - 26) as Char, // a-z
+                    _ => ('0' as Int32 + char_code - 52) as Char,     // 0-9
+                };
+                result = result + char.to_string();
+            }
+
+            result
+        }
+
+        // Secure data wiping
+        export fn secure_wipe(data: String) -> Void {
+            // In a real implementation, this would overwrite memory multiple times
+            console::println("Securely wiping " + data.len().to_string() + " characters");
+        }
+    }
+
+    // === MAIN FUNCTION ===
+
+    fn main() -> Int32 {
+        console::println("=== Functions and Modules Demo ===");
+
+        // Demonstrate basic functions
+        console::println("\n--- Basic Functions ---");
+        greet();
+        greet_person("Alice", 30);
+        let sum: Int32 = add_numbers(10, 20);
+        console::println("10 + 20 = " + sum.to_string());
+
+        let (quotient, remainder) = divide_and_remainder(17, 5);
+        console::println("17 / 5 = " + quotient.to_string() + " remainder " + remainder.to_string());
+
+        let message: String = create_message("Hello World");
+        console::println("Default message: " + message);
+
+        let custom_message: String = create_message("Custom message", "DEBUG");
+        console::println("Custom message: " + custom_message);
+
+        let fact: UInt64 = factorial(5);
+        console::println("5! = " + fact.to_string());
+
+        // Demonstrate MathUtils module
+        console::println("\n--- MathUtils Module ---");
+        let squared: Float64 = MathUtils::square(4.0);
+        console::println("4 squared = " + squared.to_string());
+
+        let cubed: Float64 = MathUtils::cube(3.0);
+        console::println("3 cubed = " + cubed.to_string());
+
+        let powered: Float64 = MathUtils::power(2.0, 8);
+        console::println("2^8 = " + powered.to_string());
+
+        let area: Float64 = MathUtils::circle_area(5.0);
+        console::println("Circle area (r=5) = " + area.to_string());
+
+        // Demonstrate StringUtils module
+        console::println("\n--- StringUtils Module ---");
+        let reversed: String = StringUtils::reverse_string("Hello World");
+        console::println("Reversed: " + reversed);
+
+        let palindrome: Bool = StringUtils::is_palindrome("radar");
+        console::println("Is 'radar' a palindrome? " + palindrome.to_string());
+
+        let word_count: Int32 = StringUtils::count_words("The quick brown fox jumps over the lazy dog");
+        console::println("Word count: " + word_count.to_string());
+
+        let capitalized: String = StringUtils::capitalize_words("hello world from t4");
+        console::println("Capitalized: " + capitalized);
+
+        // Demonstrate CryptoUtils module
+        console::println("\n--- CryptoUtils Module ---");
+        let salt: Salt = crypto::generate_salt();
+        let password_hash: Hash<SHA3_256> = CryptoUtils::hash_password("my_secret_password", salt);
+        console::println("Password hash generated: " + password_hash.size().to_string() + " bytes");
+
+        let is_valid: Bool = CryptoUtils::verify_password("my_secret_password", salt, password_hash);
+        console::println("Password verification: " + is_valid.to_string());
+
+        let random_str: String = CryptoUtils::generate_random_string(16);
+        console::println("Random string: " + random_str);
+
+        // Demonstrate function composition
+        console::println("\n--- Function Composition ---");
+        let double: fn(Int32) -> Int32 = |x: Int32| -> Int32 { x * 2 };
+        let add_five: fn(Int32) -> Int32 = |x: Int32| -> Int32 { x + 5 };
+
+        let composed: Int32 = apply_twice(double, 5);
+        console::println("Double applied twice to 5: " + composed.to_string());
+
+        let sum_all_result: Int32 = sum_all(1, 2, 3, 4, 5);
+        console::println("Sum of 1+2+3+4+5 = " + sum_all_result.to_string());
+
+        // Demonstrate closures
+        console::println("\n--- Closures ---");
+        let create_counter = |start: Int32| -> fn() -> Int32 {
+            let mut count: Int32 = start;
+            | | -> Int32 {
+                count = count + 1;
+                count
+            }
+        };
+
+        let counter: fn() -> Int32 = create_counter(10);
+        console::println("Counter: " + counter());
+        console::println("Counter: " + counter());
+        console::println("Counter: " + counter());
+
+        console::println("\n=== Functions and Modules Demo Complete ===");
+        0
+    }
+}
+
+// Example usage:
+// t4c functions_modules.t4
+// ./functions_modules
+
+// Expected output:
+// === Functions and Modules Demo ===
+// --- Basic Functions ---
+// Hello from a simple function!
+// Hello, Alice! You are 30 years old.
+// 10 + 20 = 30
+// 17 / 5 = 3 remainder 2
+// Default message: INFO: Hello World
+// Custom message: DEBUG: Custom message
+// 5! = 120
+// [... continues with module demonstrations ...]

@@ -1,0 +1,16 @@
+module main {
+    fn main() -> Int32 {
+        let x: Int32 = 42;
+        let y: Int32 = x + 1;
+        return y;
+    }
+
+    struct Point {
+        x: Int32,
+        y: Int32
+    }
+
+    fn add(a: Int32, b: Int32) -> Int32 {
+        return a + b;
+    }
+}

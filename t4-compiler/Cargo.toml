@@ -1,0 +1,138 @@
+[package]
+name = "t4-compiler"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "t4c"
+path = "src/bin/t4c/main.rs"
+
+[[bin]]
+name = "t4-lsp"
+path = "src/bin/t4-lsp/main.rs"
+
+[[bin]]
+name = "t4dbg"
+path = "src/bin/t4dbg/main.rs"
+
+[[bin]]
+name = "t4pm"
+path = "src/bin/t4pm/main.rs"
+
+[[bin]]
+name = "t4fmt"
+path = "src/bin/t4fmt/main.rs"
+
+[[bin]]
+name = "t4lint"
+path = "src/bin/t4lint/main.rs"
+
+[[bin]]
+name = "t4doc"
+path = "src/bin/t4doc/main.rs"
+
+[dependencies]
+# Core data structures
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "1.0"
+
+# ANTLR4 Runtime for Rust
+antlr-rust = "0.3.0-beta"
+# String interning for efficient token storage
+string-interner = "0.14"
+
+# For debugging and development
+log = "0.4"
+env_logger = "0.10"
+
+# Error handling and positions
+anyhow = "1.0"
+
+# Cryptographic primitives - Symmetric Encryption
+aes-gcm = "0.10"
+aes = "0.8"
+chacha20poly1305 = "0.10"
+ctr = "0.9"
+cbc = "0.1"
+
+# Cryptographic primitives - Hash Functions
+sha2 = "0.10"
+sha3 = "0.10"
+blake2 = "0.10"
+blake3 = "1.5"
+
+# Cryptographic primitives - Asymmetric Encryption
+rsa = "0.9"
+ed25519-dalek = { version = "2.1", features = ["rand_core"] }
+x25519-dalek = { version = "2.0", features = ["static_secrets"] }
+p256 = { version = "0.13", features = ["ecdh", "ecdsa"] }
+
+# Key Derivation Functions
+hkdf = "0.12"
+pbkdf2 = "0.12"
+argon2 = "0.5"
+scrypt = "0.11"
+
+# Random number generation
+rand = "0.8"
+rand_core = "0.6"
+getrandom = "0.2"
+
+# Secure memory handling
+zeroize = { version = "1.7", features = ["derive"] }
+secrecy = "0.8"
+
+# Cryptographic utilities
+subtle = "2.5"
+constant_time_eq = "0.3"
+
+# Post-quantum cryptography (when available)
+# pqcrypto = "0.16"  # Commented out until stable release
+
+# Zero-knowledge proofs (basic implementations)
+# ark-ec = "0.4"     # Commented out for now - heavy dependency
+# ark-ff = "0.4"     # Commented out for now - heavy dependency
+
+# Homomorphic encryption (basic implementations)
+# seal-fhe = "0.1"   # Commented out until stable release
+
+# UUID generation
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# CLI argument parsing
+clap = { version = "4.4", features = ["derive", "color", "suggestions"] }
+
+# JSON/YAML configuration
+serde_json = "1.0"
+serde_yaml = "0.9"
+
+# Language Server Protocol
+lsp-types = "0.94"
+lsp-server = "0.7"
+
+# Terminal UI
+ratatui = "0.24"
+crossterm = "0.27"
+
+# HTTP client for package management
+reqwest = { version = "0.11", features = ["json", "blocking"] }
+
+# Archive handling
+tar = "0.4"
+flate2 = "1.0"
+
+# Code formatting
+pretty = "0.12"
+
+# Graphviz for documentation
+dot = "0.1"
+
+# Async runtime
+tokio = { version = "1.0", features = ["full"] }
+
+# For testing
+[dev-dependencies]
+tempfile = "3.0"

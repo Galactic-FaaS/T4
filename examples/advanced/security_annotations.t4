@@ -1,0 +1,120 @@
+// Security Annotations and Advanced Function Features Example
+// Demonstrates security annotations, async functions, and advanced control flow
+
+module SecurityAnnotations {
+
+// Security annotations for cryptographic functions
+#[constant_time, secure_memory, timing_resistant]
+fn secure_compare(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+
+    let mut result = 0u8;
+    for i in 0..a.len() {
+        result |= a[i] ^ b[i];
+    }
+
+    result == 0
+}
+
+// Advanced function features with closures and async
+async fn async_cryptographic_operation(data: &[u8]) -> Result<Vec<u8>, CryptoError> {
+    let closure = |x: i32| -> i32 { x * 2 };
+
+    // Iterator chains with advanced control flow
+    let processed: Vec<i32> = (0..100)
+        .filter(|&x| x % 2 == 0)
+        .map(closure)
+        .take(10)
+        .collect();
+
+    // Pattern matching with guards
+    for value in processed {
+        match value {
+            x if x > 50 => println!("Large: {}", x),
+            x if x > 20 => println!("Medium: {}", x),
+            _ => println!("Small: {}", x),
+        }
+    }
+
+    // List comprehensions
+    let squares: Vec<i32> = [1, 2, 3, 4, 5]
+        .iter()
+        .map(|&x| x * x)
+        .collect();
+
+    Ok(data.to_vec())
+}
+
+// Operator overloading
+impl Add for Point {
+    type Output = Point;
+
+    fn add(self, other: Point) -> Point {
+        Point {
+            x: self.x + other.x,
+            y: self.y + other.y,
+        }
+    }
+}
+
+// Cryptographic protocol with security annotations
+#[verify_protocol, forward_secure, non_replayable]
+protocol KeyExchange {
+    init -> {
+        send(client_hello);
+        receive(server_hello);
+        compute(shared_secret);
+        verify(server_certificate);
+    }
+
+    response -> {
+        receive(client_hello);
+        send(server_hello);
+        compute(shared_secret);
+    }
+}
+
+// Zero-knowledge proof syntax
+fn prove_knowledge(statement: Proposition, witness: Witness) -> Proof {
+    zero_knowledge_proof(
+        prover: self,
+        verifier: remote_party,
+        statement: statement,
+        witness: witness
+    )
+}
+
+// Homomorphic encryption operations
+fn homomorphic_computation(encrypted: Ciphertext<CKKS>) -> Ciphertext<CKKS> {
+    homomorphic.add(encrypted, encrypted_value)
+}
+
+// Distributed cryptography
+fn threshold_signature(partial_sigs: Vec<Signature>) -> Signature {
+    distributed(threshold: 3, partial_sigs)
+}
+
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+enum CryptoError {
+    InvalidKey,
+    DecryptionFailed,
+    TimingAttackDetected,
+}
+
+fn main() {
+    let data = b"secret message";
+    let result = async_cryptographic_operation(data);
+
+    match result {
+        Ok(encrypted) => println!("Operation successful"),
+        Err(e) => println!("Operation failed: {:?}", e),
+    }
+}
+
+}

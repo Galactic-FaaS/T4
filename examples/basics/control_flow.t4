@@ -1,0 +1,475 @@
+// T4 Control Flow Example
+// Comprehensive demonstration of T4's control flow structures
+
+module ControlFlowDemo {
+    import "libcrypto.so" as crypto_lib;
+
+    config {
+        default_crypto_provider = "libcrypto";
+        post_quantum_enabled = true;
+        hardware_acceleration = true;
+    }
+
+    // Function demonstrating conditional statements
+    fn demonstrate_conditionals() -> Void {
+        console::println("=== Conditional Statements ===");
+
+        let number: Int32 = 42;
+
+        // Simple if statement
+        if number > 0 {
+            console::println("Number is positive");
+        }
+
+        // If-else statement
+        if number % 2 == 0 {
+            console::println("Number is even");
+        } else {
+            console::println("Number is odd");
+        }
+
+        // If-else if-else chain
+        if number < 0 {
+            console::println("Number is negative");
+        } else if number == 0 {
+            console::println("Number is zero");
+        } else {
+            console::println("Number is positive");
+        }
+
+        // Nested conditionals
+        let x: Int32 = 10;
+        let y: Int32 = 20;
+
+        if x > 0 {
+            if y > 0 {
+                console::println("Both numbers are positive");
+            } else {
+                console::println("X is positive, Y is not");
+            }
+        } else {
+            console::println("X is not positive");
+        }
+
+        // Boolean expressions
+        let is_adult: Bool = true;
+        let has_permission: Bool = false;
+
+        if is_adult && has_permission {
+            console::println("Access granted");
+        } else if is_adult {
+            console::println("Adult but no permission");
+        } else {
+            console::println("Access denied");
+        }
+
+        if !has_permission {
+            console::println("Permission required");
+        }
+    }
+
+    // Function demonstrating loop structures
+    fn demonstrate_loops() -> Void {
+        console::println("\n=== Loop Structures ===");
+
+        // For loops with ranges
+        console::println("Counting from 1 to 5:");
+        for i in 1..6 {
+            console::println("Count: " + i.to_string());
+        }
+
+        console::println("Counting from 0 to 4:");
+        for i in 0..5 {
+            console::println("Index: " + i.to_string());
+        }
+
+        // For loops with steps
+        console::println("Even numbers from 0 to 10:");
+        for i in (0..11).step_by(2) {
+            console::println("Even: " + i.to_string());
+        }
+
+        // For loops with arrays
+        let numbers: [Int32; 5] = [10, 20, 30, 40, 50];
+        console::println("Array elements:");
+        for num in numbers {
+            console::println("Number: " + num.to_string());
+        }
+
+        // For loops with vectors
+        let mut vector: Vec<Int32> = Vec::new();
+        vector.push(1);
+        vector.push(2);
+        vector.push(3);
+
+        console::println("Vector elements:");
+        for (index, &value) in vector.iter().enumerate() {
+            console::println("Index " + index.to_string() + ": " + value.to_string());
+        }
+
+        // While loops
+        console::println("While loop countdown:");
+        let mut countdown: Int32 = 5;
+        while countdown > 0 {
+            console::println("Countdown: " + countdown.to_string());
+            countdown = countdown - 1;
+        }
+
+        // Do-while style loop (using loop with break)
+        console::println("Do-while style loop:");
+        let mut counter: Int32 = 0;
+        loop {
+            console::println("Counter: " + counter.to_string());
+            counter = counter + 1;
+
+            if counter >= 3 {
+                break;
+            }
+        }
+
+        // Loop with continue
+        console::println("Skipping odd numbers:");
+        for i in 0..10 {
+            if i % 2 != 0 {
+                continue; // Skip odd numbers
+            }
+            console::println("Even number: " + i.to_string());
+        }
+    }
+
+    // Function demonstrating match expressions
+    fn demonstrate_match() -> Void {
+        console::println("\n=== Match Expressions ===");
+
+        // Match with integers
+        let value: Int32 = 42;
+
+        match value {
+            0 => console::println("Zero"),
+            1 => console::println("One"),
+            42 => console::println("The answer to life, the universe, and everything"),
+            _ => console::println("Some other number")
+        }
+
+        // Match with strings
+        let command: String = "start";
+
+        match command {
+            "start" => console::println("Starting operation"),
+            "stop" => console::println("Stopping operation"),
+            "pause" => console::println("Pausing operation"),
+            _ => console::println("Unknown command: " + command)
+        }
+
+        // Match with booleans
+        let flag: Bool = true;
+
+        match flag {
+            true => console::println("Flag is true"),
+            false => console::println("Flag is false")
+        }
+
+        // Match with Option types
+        let optional: Option<Int32> = Some(42);
+
+        match optional {
+            Some(val) => console::println("Got value: " + val.to_string()),
+            None => console::println("No value")
+        }
+
+        // Match with Result types
+        fn divide(a: Int32, b: Int32) -> Result<Int32, String> {
+            if b == 0 {
+                Err("Division by zero".to_string())
+            } else {
+                Ok(a / b)
+            }
+        }
+
+        let result: Result<Int32, String> = divide(10, 2);
+
+        match result {
+            Ok(val) => console::println("Division result: " + val.to_string()),
+            Err(error) => console::println("Division error: " + error)
+        }
+
+        // Match with complex patterns
+        let point: (Int32, Int32) = (0, 0);
+
+        match point {
+            (0, 0) => console::println("Origin point"),
+            (x, 0) => console::println("On X-axis at: " + x.to_string()),
+            (0, y) => console::println("On Y-axis at: " + y.to_string()),
+            (x, y) => console::println("Point (" + x.to_string() + ", " + y.to_string() + ")")
+        }
+    }
+
+    // Function demonstrating advanced control flow
+    fn demonstrate_advanced_control_flow() -> Void {
+        console::println("\n=== Advanced Control Flow ===");
+
+        // Early returns
+        fn find_first_even(numbers: &[Int32]) -> Option<Int32> {
+            for &num in numbers {
+                if num % 2 == 0 {
+                    return Some(num); // Early return
+                }
+            }
+            None
+        }
+
+        let numbers: [Int32; 5] = [1, 3, 5, 8, 9];
+        let first_even: Option<Int32> = find_first_even(&numbers);
+
+        match first_even {
+            Some(val) => console::println("First even number: " + val.to_string()),
+            None => console::println("No even numbers found")
+        }
+
+        // Labeled loops and breaks
+        console::println("Nested loop with labeled break:");
+        'outer: for i in 0..5 {
+            for j in 0..5 {
+                if i * j > 6 {
+                    console::println("Breaking at i=" + i.to_string() + ", j=" + j.to_string());
+                    break 'outer; // Break out of both loops
+                }
+                console::println("i=" + i.to_string() + ", j=" + j.to_string());
+            }
+        }
+
+        // Loop with labeled continue
+        console::println("Skipping with labeled continue:");
+        'main: for i in 0..4 {
+            for j in 0..4 {
+                if j == 2 {
+                    continue 'main; // Continue outer loop
+                }
+                console::println("i=" + i.to_string() + ", j=" + j.to_string());
+            }
+        }
+
+        // Conditional loops with complex conditions
+        let mut matrix: [[Int32; 3]; 3] = [
+            [1, 2, 3],
+            [4, 5, 6],
+            [7, 8, 9]
+        ];
+
+        console::println("Matrix diagonal:");
+        for i in 0..3 {
+            for j in 0..3 {
+                if i == j {
+                    console::println("Diagonal[" + i.to_string() + "][" + j.to_string() + "] = " + matrix[i][j].to_string());
+                }
+            }
+        }
+    }
+
+    // Function demonstrating error handling control flow
+    fn demonstrate_error_handling() -> Void {
+        console::println("\n=== Error Handling Control Flow ===");
+
+        // Function that may fail
+        fn parse_number(s: String) -> Result<Int32, String> {
+            match s.parse_int() {
+                Some(num) => Ok(num),
+                None => Err("Invalid number format".to_string())
+            }
+        }
+
+        // Using Result with match
+        let inputs: [String; 4] = ["42", "123", "abc", "456"];
+
+        for input in inputs {
+            match parse_number(input) {
+                Ok(num) => console::println("Parsed: " + num.to_string()),
+                Err(error) => console::println("Error parsing '" + input + "': " + error)
+            }
+        }
+
+        // Using Result with if let
+        let valid_input: String = "789";
+        if let Ok(num) = parse_number(valid_input) {
+            console::println("Successfully parsed: " + num.to_string());
+        }
+
+        // Chaining operations with Result
+        fn process_data(data: String) -> Result<String, String> {
+            let num: Int32 = parse_number(data)?;
+            let doubled: Int32 = num * 2;
+            Ok(doubled.to_string())
+        }
+
+        let test_data: [String; 3] = ["10", "20", "invalid"];
+
+        for data in test_data {
+            match process_data(data) {
+                Ok(result) => console::println("Processed '" + data + "' -> " + result),
+                Err(error) => console::println("Failed to process '" + data + "': " + error)
+            }
+        }
+
+        // Using Option for nullable operations
+        fn find_user(id: Int32) -> Option<String> {
+            if id > 0 && id < 1000 {
+                Some("User".to_string() + id.to_string())
+            } else {
+                None
+            }
+        }
+
+        let user_ids: [Int32; 4] = [1, 500, -1, 2000];
+
+        for id in user_ids {
+            match find_user(id) {
+                Some(user) => console::println("Found user: " + user),
+                None => console::println("User not found for id: " + id.to_string())
+            }
+        }
+    }
+
+    // Function demonstrating iteration patterns
+    fn demonstrate_iteration_patterns() -> Void {
+        console::println("\n=== Iteration Patterns ===");
+
+        // Iterating over ranges
+        let range: Range<Int32> = 1..10;
+        console::println("Range iteration:");
+        for num in range {
+            console::println("Number: " + num.to_string());
+        }
+
+        // Iterating over collections with indices
+        let fruits: [String; 4] = ["Apple", "Banana", "Cherry", "Date"];
+
+        console::println("Fruits with indices:");
+        for (index, fruit) in fruits.iter().enumerate() {
+            console::println("[" + index.to_string() + "] " + fruit);
+        }
+
+        // Filtering iteration
+        console::println("Even numbers from 1 to 20:");
+        for num in 1..21 {
+            if num % 2 == 0 {
+                console::println("Even: " + num.to_string());
+            }
+        }
+
+        // Transforming iteration
+        console::println("Squares of numbers 1 to 5:");
+        for num in 1..6 {
+            let square: Int32 = num * num;
+            console::println(num.to_string() + "^2 = " + square.to_string());
+        }
+
+        // Conditional iteration with early termination
+        console::println("First 5 even numbers:");
+        let mut count: Int32 = 0;
+        for num in 0.. {
+            if num % 2 == 0 {
+                console::println("Even: " + num.to_string());
+                count = count + 1;
+            }
+
+            if count >= 5 {
+                break;
+            }
+        }
+    }
+
+    // Function demonstrating nested control structures
+    fn demonstrate_nested_structures() -> Void {
+        console::println("\n=== Nested Control Structures ===");
+
+        // Nested loops with conditions
+        console::println("Multiplication table (1-5):");
+        for i in 1..6 {
+            for j in 1..6 {
+                let product: Int32 = i * j;
+                console::print(product.to_string() + "\t");
+            }
+            console::println(""); // New line after each row
+        }
+
+        // Nested conditionals with loops
+        console::println("Classifying numbers 1-20:");
+        for num in 1..21 {
+            if num % 2 == 0 {
+                if num % 4 == 0 {
+                    console::println(num.to_string() + " is divisible by 4");
+                } else {
+                    console::println(num.to_string() + " is even but not divisible by 4");
+                }
+            } else {
+                if num % 3 == 0 {
+                    console::println(num.to_string() + " is odd and divisible by 3");
+                } else {
+                    console::println(num.to_string() + " is just odd");
+                }
+            }
+        }
+
+        // Complex nested structure with early returns
+        fn analyze_data(data: &[Int32]) -> String {
+            if data.is_empty() {
+                return "No data to analyze".to_string();
+            }
+
+            let mut sum: Int32 = 0;
+            let mut positive_count: Int32 = 0;
+
+            for &num in data {
+                if num > 0 {
+                    sum = sum + num;
+                    positive_count = positive_count + 1;
+                } else if num < 0 {
+                    // Skip negative numbers
+                    continue;
+                } else {
+                    // Handle zero
+                    console::println("Found zero in data");
+                }
+            }
+
+            if positive_count == 0 {
+                return "No positive numbers found".to_string();
+            }
+
+            let average: Float64 = sum as Float64 / positive_count as Float64;
+            "Average of " + positive_count.to_string() + " positive numbers: " + average.to_string()
+        }
+
+        let test_data: [Int32; 6] = [1, -2, 3, 0, 5, -6];
+        let analysis: String = analyze_data(&test_data);
+        console::println("Analysis result: " + analysis);
+    }
+
+    // Main function
+    fn main() -> Int32 {
+        demonstrate_conditionals();
+        demonstrate_loops();
+        demonstrate_match();
+        demonstrate_advanced_control_flow();
+        demonstrate_error_handling();
+        demonstrate_iteration_patterns();
+        demonstrate_nested_structures();
+
+        console::println("\n=== Control Flow Demo Complete ===");
+        0
+    }
+}
+
+// Example usage:
+// t4c control_flow.t4
+// ./control_flow
+
+// Expected output:
+// === Conditional Statements ===
+// Number is positive
+// Number is even
+// Number is positive
+// Both numbers are positive
+// Adult but no permission
+// Permission required
+// [... continues with loops, match expressions, etc.]

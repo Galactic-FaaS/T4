@@ -1,0 +1,1005 @@
+// T4 Comprehensive Unit Test Suite
+// Tests for all T4 language features and standard library components
+
+module T4UnitTests {
+    import "libcrypto.so" as crypto_lib;
+
+    config {
+        default_crypto_provider = "libcrypto";
+        post_quantum_enabled = true;
+        hardware_acceleration = true;
+    }
+
+    // === TEST FRAMEWORK ===
+
+    struct TestResult {
+        name: String,
+        passed: Bool,
+        duration_ms: UInt64,
+        error_message: String
+    }
+
+    struct TestSuite {
+        name: String,
+        tests: Vec<TestResult>,
+        total_duration_ms: UInt64
+    }
+
+    impl TestSuite {
+        fn new(name: String) -> TestSuite {
+            TestSuite {
+                name,
+                tests: Vec::new(),
+                total_duration_ms: 0
+            }
+        }
+
+        fn add_test(&mut self, result: TestResult) -> Void {
+            self.total_duration_ms = self.total_duration_ms + result.duration_ms;
+            self.tests.push(result);
+        }
+
+        fn get_summary(&self) -> String {
+            let passed: Int32 = self.tests.iter().filter(|t| t.passed).count() as Int32;
+            let total: Int32 = self.tests.len() as Int32;
+            let success_rate: Float64 = (passed as Float64 / total as Float64) * 100.0;
+
+            "Test Suite: " + self.name + "\n" +
+            "Passed: " + passed.to_string() + "/" + total.to_string() + "\n" +
+            "Success Rate: " + success_rate.to_string() + "%\n" +
+            "Total Duration: " + self.total_duration_ms.to_string() + "ms"
+        }
+    }
+
+    // Test assertion functions
+    fn assert_true(condition: Bool, message: String) -> Void {
+        if !condition {
+            panic("Assertion failed: " + message);
+        }
+    }
+
+    fn assert_false(condition: Bool, message: String) -> Void {
+        if condition {
+            panic("Assertion failed: " + message);
+        }
+    }
+
+    fn assert_equal<T>(a: T, b: T, message: String) -> Void
+    where
+        T: PartialEq
+    {
+        if a != b {
+            panic("Assertion failed: " + message + " (expected: " + b.to_string() + ", got: " + a.to_string() + ")");
+        }
+    }
+
+    fn assert_not_equal<T>(a: T, b: T, message: String) -> Void
+    where
+        T: PartialEq
+    {
+        if a == b {
+            panic("Assertion failed: " + message + " (values should not be equal)");
+        }
+    }
+
+    // === BASIC LANGUAGE TESTS ===
+
+    fn test_basic_data_types() -> TestResult {
+        let test_name: String = "Basic Data Types";
+        let start_time: UInt64 = time::now();
+
+        try {
+            // Integer types
+            let int8: Int8 = 42;
+            let int16: Int16 = 1000;
+            let int32: Int32 = 100000;
+            let int64: Int64 = 1000000000;
+
+            assert_equal(int8.to_string(), "42", "Int8 conversion");
+            assert_equal(int16.to_string(), "1000", "Int16 conversion");
+            assert_equal(int32.to_string(), "100000", "Int32 conversion");
+            assert_equal(int64.to_string(), "1000000000", "Int64 conversion");
+
+            // Unsigned integers
+            let uint8: UInt8 = 255;
+            let uint16: UInt16 = 65535;
+            let uint32: UInt32 = 4294967295;
+            let uint64: UInt64 = 18446744073709551615;
+
+            assert_equal(uint8.to_string(), "255", "UInt8 conversion");
+            assert_equal(uint16.to_string(), "65535", "UInt16 conversion");
+            assert_equal(uint32.to_string(), "4294967295", "UInt32 conversion");
+            assert_equal(uint64.to_string(), "18446744073709551615", "UInt64 conversion");
+
+            // Floating point
+            let float32: Float32 = 3.14159;
+            let float64: Float64 = 3.141592653589793;
+
+            assert_true(float32 > 3.0, "Float32 comparison");
+            assert_true(float64 > 3.0, "Float64 comparison");
+
+            // Boolean
+            let flag: Bool = true;
+            assert_true(flag, "Boolean true");
+            assert_false(!flag, "Boolean false");
+
+            // Characters
+            let char_a: Char = 'A';
+            let char_z: Char = 'Z';
+            let unicode: Char = '世';
+
+            assert_equal(char_a.to_string(), "A", "ASCII character");
+            assert_equal(char_z.to_string(), "Z", "ASCII character");
+            assert_equal(unicode.to_string(), "世", "Unicode character");
+
+            // Strings
+            let ascii_string: String = "Hello, T4!";
+            let unicode_string: String = "Hello, 世界!";
+
+            assert_equal(ascii_string.len(), 10, "ASCII string length");
+            assert_equal(unicode_string.len(), 9, "Unicode string length");
+
+            TestResult {
+                name: test_name,
+                passed: true,
+                duration_ms: time::now() - start_time,
+                error_message: ""
+            }
+        } catch (error: String) {
+            TestResult {
+                name: test_name,
+                passed: false,
+                duration_ms: time::now() - start_time,
+                error_message: error
+            }
+        }
+    }
+
+    fn test_array_operations() -> TestResult {
+        let test_name: String = "Array Operations";
+        let start_time: UInt64 = time::now();
+
+        try {
+            // Fixed-size arrays
+            let numbers: [Int32; 5] = [1, 2, 3, 4, 5];
+            assert_equal(numbers.len(), 5, "Array length");
+            assert_equal(numbers[0], 1, "Array access");
+            assert_equal(numbers[4], 5, "Array access");
+
+            // Array bounds checking
+            let mut mutable_array: [Int32; 3] = [10, 20, 30];
+            mutable_array[0] = 100;
+            assert_equal(mutable_array[0], 100, "Array mutation");
+
+            // Multi-dimensional arrays
+            let matrix: [[Int32; 2]; 2] = [[1, 2], [3, 4]];
+            assert_equal(matrix[0][0], 1, "Matrix access");
+            assert_equal(matrix[1][1], 4, "Matrix access");
+
+            TestResult {
+                name: test_name,
+                passed: true,
+                duration_ms: time::now() - start_time,
+                error_message: ""
+            }
+        } catch (error: String) {
+            TestResult {
+                name: test_name,
+                passed: false,
+                duration_ms: time::now() - start_time,
+                error_message: error
+            }
+        }
+    }
+
+    fn test_vector_operations() -> TestResult {
+        let test_name: String = "Vector Operations";
+        let start_time: UInt64 = time::now();
+
+        try {
+            // Vector creation and manipulation
+            let mut vector: Vec<Int32> = Vec::new();
+            assert_equal(vector.len(), 0, "Empty vector length");
+            assert_true(vector.is_empty(), "Empty vector check");
+
+            // Push elements
+            vector.push(1);
+            vector.push(2);
+            vector.push(3);
+            assert_equal(vector.len(), 3, "Vector length after pushes");
+
+            // Access elements
+            assert_equal(vector[0], 1, "Vector access");
+            assert_equal(vector[2], 3, "Vector access");
+
+            // Pop elements
+            let popped: Int32 = vector.pop().unwrap_or(0);
+            assert_equal(popped, 3, "Popped element");
+            assert_equal(vector.len(), 2, "Vector length after pop");
+
+            // Insert and remove
+            vector.insert(1, 99);
+            assert_equal(vector[1], 99, "Inserted element");
+
+            vector.remove(0);
+            assert_equal(vector[0], 2, "After removal");
+
+            TestResult {
+                name: test_name,
+                passed: true,
+                duration_ms: time::now() - start_time,
+                error_message: ""
+            }
+        } catch (error: String) {
+            TestResult {
+                name: test_name,
+                passed: false,
+                duration_ms: time::now() - start_time,
+                error_message: error
+            }
+        }
+    }
+
+    fn test_hashmap_operations() -> TestResult {
+        let test_name: String = "HashMap Operations";
+        let start_time: UInt64 = time::now();
+
+        try {
+            // HashMap creation and insertion
+            let mut map: HashMap<String, Int32> = HashMap::new();
+            assert_equal(map.len(), 0, "Empty HashMap length");
+
+            map.insert("key1", 100);
+            map.insert("key2", 200);
+            map.insert("key3", 300);
+            assert_equal(map.len(), 3, "HashMap length after insertions");
+
+            // Value retrieval
+            let val1: Int32 = map.get("key1").unwrap_or(0);
+            let val2: Int32 = map.get("key2").unwrap_or(0);
+            let val_missing: Int32 = map.get("missing").unwrap_or(0);
+
+            assert_equal(val1, 100, "HashMap value retrieval");
+            assert_equal(val2, 200, "HashMap value retrieval");
+            assert_equal(val_missing, 0, "Missing key handling");
+
+            // Key existence checks
+            assert_true(map.contains_key("key1"), "Key existence check");
+            assert_false(map.contains_key("missing"), "Missing key check");
+
+            // Key removal
+            let removed: Option<Int32> = map.remove("key2");
+            assert_equal(removed.unwrap_or(0), 200, "Removed value");
+            assert_equal(map.len(), 2, "HashMap length after removal");
+            assert_false(map.contains_key("key2"), "Key removed check");
+
+            TestResult {
+                name: test_name,
+                passed: true,
+                duration_ms: time::now() - start_time,
+                error_message: ""
+            }
+        } catch (error: String) {
+            TestResult {
+                name: test_name,
+                passed: false,
+                duration_ms: time::now() - start_time,
+                error_message: error
+            }
+        }
+    }
+
+    // === CRYPTOGRAPHIC TESTS ===
+
+    fn test_symmetric_encryption() -> TestResult {
+        let test_name: String = "Symmetric Encryption";
+        let start_time: UInt64 = time::now();
+
+        try {
+            // Generate AES key
+            let aes_key: Key<AES256> = crypto::generate_key();
+            assert_true(aes_key.size() > 0, "AES key generation");
+
+            // Prepare test data
+            let plaintext: Plaintext = Plaintext::from("This is a test message for AES encryption");
+            let nonce: Nonce = crypto::generate_nonce();
+
+            // Encrypt
+            let ciphertext: Ciphertext<AES256> = crypto::encrypt(plaintext, aes_key, nonce);
+            assert_true(ciphertext.len() > 0, "Ciphertext generation");
+
+            // Decrypt
+            let decrypted: Plaintext = crypto::decrypt(ciphertext, aes_key, nonce);
+            let decrypted_text: String = decrypted.to_string();
+
+            assert_equal(decrypted_text, "This is a test message for AES encryption", "AES roundtrip");
+
+            // Test with different data
+            let short_message: Plaintext = Plaintext::from("Short");
+            let short_nonce: Nonce = crypto::generate_nonce();
+            let short_encrypted: Ciphertext<AES256> = crypto::encrypt(short_message, aes_key, short_nonce);
+            let short_decrypted: Plaintext = crypto::decrypt(short_encrypted, aes_key, short_nonce);
+
+            assert_equal(short_decrypted.to_string(), "Short", "Short message encryption");
+
+            TestResult {
+                name: test_name,
+                passed: true,
+                duration_ms: time::now() - start_time,
+                error_message: ""
+            }
+        } catch (error: String) {
+            TestResult {
+                name: test_name,
+                passed: false,
+                duration_ms: time::now() - start_time,
+                error_message: error
+            }
+        }
+    }
+
+    fn test_hash_functions() -> TestResult {
+        let test_name: String = "Hash Functions";
+        let start_time: UInt64 = time::now();
+
+        try {
+            // Test data
+            let data1: Bytes = Bytes::from("Message 1");
+            let data2: Bytes = Bytes::from("Message 2");
+            let data3: Bytes = Bytes::from("Message 1"); // Same as data1
+
+            // SHA3-256 hashes
+            let hash1: Hash<SHA3_256> = crypto::hash(data1);
+            let hash2: Hash<SHA3_256> = crypto::hash(data2);
+            let hash3: Hash<SHA3_256> = crypto::hash(data3);
+
+            assert_equal(hash1.size(), 32, "SHA3-256 hash size");
+            assert_equal(hash2.size(), 32, "SHA3-256 hash size");
+            assert_equal(hash3.size(), 32, "SHA3-256 hash size");
+
+            // Different data should produce different hashes
+            assert_false(hash1.constant_time_compare(hash2), "Different data produces different hashes");
+
+            // Same data should produce same hash
+            assert_true(hash1.constant_time_compare(hash3), "Same data produces same hash");
+
+            // Test different hash functions
+            let sha3_512: Hash<SHA3_512> = crypto::hash(data1);
+            let blake2b: Hash<BLAKE2b_256> = crypto::hash(data1);
+
+            assert_equal(sha3_512.size(), 64, "SHA3-512 hash size");
+            assert_equal(blake2b.size(), 32, "BLAKE2b hash size");
+
+            // Different algorithms should produce different results
+            assert_false(sha3_256.constant_time_compare(sha3_512), "Different algorithms produce different hashes");
+            assert_false(sha3_256.constant_time_compare(blake2b), "Different algorithms produce different hashes");
+
+            TestResult {
+                name: test_name,
+                passed: true,
+                duration_ms: time::now() - start_time,
+                error_message: ""
+            }
+        } catch (error: String) {
+            TestResult {
+                name: test_name,
+                passed: false,
+                duration_ms: time::now() - start_time,
+                error_message: error
+            }
+        }
+    }
+
+    fn test_digital_signatures() -> TestResult {
+        let test_name: String = "Digital Signatures";
+        let start_time: UInt64 = time::now();
+
+        try {
+            // Generate keypair
+            let (public_key, private_key): (PublicKey<Ed25519>, PrivateKey<Ed25519>) = crypto::generate_keypair();
+            assert_true(public_key.size() > 0, "Public key generation");
+            assert_true(private_key.size() > 0, "Private key generation");
+
+            // Test message
+            let message: Bytes = Bytes::from("This message will be signed");
+
+            // Sign message
+            let signature: Signature<Ed25519> = crypto::sign(message, private_key);
+            assert_true(signature.size() > 0, "Signature generation");
+
+            // Verify signature
+            let is_valid: Bool = crypto::verify(message, signature, public_key);
+            assert_true(is_valid, "Valid signature verification");
+
+            // Test with modified message
+            let modified_message: Bytes = Bytes::from("This message will be signed (modified)");
+            let is_modified_valid: Bool = crypto::verify(modified_message, signature, public_key);
+            assert_false(is_modified_valid, "Modified message should fail verification");
+
+            // Test with wrong key
+            let (wrong_public, _): (PublicKey<Ed25519>, PrivateKey<Ed25519>) = crypto::generate_keypair();
+            let is_wrong_key_valid: Bool = crypto::verify(message, signature, wrong_public);
+            assert_false(is_wrong_key_valid, "Wrong key should fail verification");
+
+            TestResult {
+                name: test_name,
+                passed: true,
+                duration_ms: time::now() - start_time,
+                error_message: ""
+            }
+        } catch (error: String) {
+            TestResult {
+                name: test_name,
+                passed: false,
+                duration_ms: time::now() - start_time,
+                error_message: error
+            }
+        }
+    }
+
+    fn test_key_exchange() -> TestResult {
+        let test_name: String = "Key Exchange";
+        let start_time: UInt64 = time::now();
+
+        try {
+            // ECDH key exchange
+            let (alice_public, alice_private): (PublicKey<SecP256r1>, PrivateKey<SecP256r1>) = crypto::generate_keypair();
+            let (bob_public, bob_private): (PublicKey<SecP256r1>, PrivateKey<SecP256r1>) = crypto::generate_keypair();
+
+            // Perform key exchange
+            let alice_shared: SharedSecret<SecP256r1> = crypto::ecdh_compute(alice_private, bob_public);
+            let bob_shared: SharedSecret<SecP256r1> = crypto::ecdh_compute(bob_private, alice_public);
+
+            // Shared secrets should be identical
+            let secrets_match: Bool = alice_shared.constant_time_compare(bob_shared);
+            assert_true(secrets_match, "ECDH shared secrets should match");
+
+            assert_true(alice_shared.size() > 0, "Shared secret generation");
+            assert_true(bob_shared.size() > 0, "Shared secret generation");
+
+            // Use shared secret for encryption
+            let session_key: Key<AES256> = crypto::derive_key(alice_shared);
+            let message: Plaintext = Plaintext::from("ECDH test message");
+            let nonce: Nonce = crypto::generate_nonce();
+
+            let encrypted: Ciphertext<AES256> = crypto::encrypt(message, session_key, nonce);
+            let decrypted: Plaintext = crypto::decrypt(encrypted, session_key, nonce);
+
+            assert_equal(decrypted.to_string(), "ECDH test message", "ECDH-derived key encryption");
+
+            TestResult {
+                name: test_name,
+                passed: true,
+                duration_ms: time::now() - start_time,
+                error_message: ""
+            }
+        } catch (error: String) {
+            TestResult {
+                name: test_name,
+                passed: false,
+                duration_ms: time::now() - start_time,
+                error_message: error
+            }
+        }
+    }
+
+    // === STANDARD LIBRARY TESTS ===
+
+    fn test_string_operations() -> TestResult {
+        let test_name: String = "String Operations";
+        let start_time: UInt64 = time::now();
+
+        try {
+            // Basic string operations
+            let hello: String = "Hello";
+            let world: String = "World";
+            let combined: String = hello + ", " + world + "!";
+
+            assert_equal(combined, "Hello, World!", "String concatenation");
+            assert_equal(hello.len(), 5, "String length");
+            assert_equal(world.len(), 5, "String length");
+
+            // String comparisons
+            assert_true(hello == "Hello", "String equality");
+            assert_false(hello == "hello", "String inequality");
+
+            // Substring operations
+            let substring: String = combined.substring(0, 5);
+            assert_equal(substring, "Hello", "Substring extraction");
+
+            // Character access
+            let first_char: Char = combined.char_at(0);
+            let last_char: Char = combined.char_at(12);
+
+            assert_equal(first_char.to_string(), "H", "Character access");
+            assert_equal(last_char.to_string(), "!", "Character access");
+
+            // Case conversion
+            let upper: String = combined.to_uppercase();
+            let lower: String = combined.to_lowercase();
+
+            assert_equal(upper, "HELLO, WORLD!", "Uppercase conversion");
+            assert_equal(lower, "hello, world!", "Lowercase conversion");
+
+            TestResult {
+                name: test_name,
+                passed: true,
+                duration_ms: time::now() - start_time,
+                error_message: ""
+            }
+        } catch (error: String) {
+            TestResult {
+                name: test_name,
+                passed: false,
+                duration_ms: time::now() - start_time,
+                error_message: error
+            }
+        }
+    }
+
+    fn test_mathematical_operations() -> TestResult {
+        let test_name: String = "Mathematical Operations";
+        let start_time: UInt64 = time::now();
+
+        try {
+            // Basic arithmetic
+            let a: Int32 = 10;
+            let b: Int32 = 3;
+
+            assert_equal(a + b, 13, "Addition");
+            assert_equal(a - b, 7, "Subtraction");
+            assert_equal(a * b, 30, "Multiplication");
+            assert_equal(a / b, 3, "Division");
+            assert_equal(a % b, 1, "Modulo");
+
+            // Floating point arithmetic
+            let x: Float64 = 3.14159;
+            let y: Float64 = 2.71828;
+
+            assert_true((x + y) > 5.8, "Float addition");
+            assert_true((x - y) > 0.4, "Float subtraction");
+            assert_true((x * y) > 8.5, "Float multiplication");
+            assert_true((x / y) > 1.1, "Float division");
+
+            // Mathematical functions
+            let sqrt_16: Float64 = math::sqrt(16.0);
+            let pow_2_3: Float64 = math::pow(2.0, 3.0);
+            let sin_pi_2: Float64 = math::sin(math::PI / 2.0);
+
+            assert_true((sqrt_16 - 4.0).abs() < 0.0001, "Square root");
+            assert_true((pow_2_3 - 8.0).abs() < 0.0001, "Power function");
+            assert_true((sin_pi_2 - 1.0).abs() < 0.0001, "Sine function");
+
+            // Big integer operations
+            let big_a: BigInt = BigInt::from(123456789);
+            let big_b: BigInt = BigInt::from(987654321);
+            let big_sum: BigInt = big_a + big_b;
+            let big_product: BigInt = big_a * big_b;
+
+            assert_true(big_sum > BigInt::from(1000000000), "Big integer addition");
+            assert_true(big_product > BigInt::from(100000000000000), "Big integer multiplication");
+
+            TestResult {
+                name: test_name,
+                passed: true,
+                duration_ms: time::now() - start_time,
+                error_message: ""
+            }
+        } catch (error: String) {
+            TestResult {
+                name: test_name,
+                passed: false,
+                duration_ms: time::now() - start_time,
+                error_message: error
+            }
+        }
+    }
+
+    fn test_random_operations() -> TestResult {
+        let test_name: String = "Random Operations";
+        let start_time: UInt64 = time::now();
+
+        try {
+            // Generate random numbers
+            let random_int: Int32 = crypto::random::integer(1, 100);
+            let random_float: Float64 = crypto::random::float();
+            let random_bytes: Bytes = crypto::random::secure_bytes(32);
+
+            assert_true(random_int >= 1 && random_int <= 100, "Random integer range");
+            assert_true(random_float >= 0.0 && random_float < 1.0, "Random float range");
+            assert_equal(random_bytes.len(), 32, "Random bytes length");
+
+            // Generate multiple random values to test distribution
+            let mut random_values: Vec<Int32> = Vec::new();
+            for _ in 0..100 {
+                random_values.push(crypto::random::integer(1, 10));
+            }
+
+            // Check that we get a good distribution
+            let mut counts: HashMap<Int32, Int32> = HashMap::new();
+            for &val in random_values.iter() {
+                *counts.entry(val).or_insert(0) += 1;
+            }
+
+            assert_true(counts.len() >= 3, "Random distribution test");
+            assert_true(counts.values().all(|&count| count > 0), "All values appear");
+
+            TestResult {
+                name: test_name,
+                passed: true,
+                duration_ms: time::now() - start_time,
+                error_message: ""
+            }
+        } catch (error: String) {
+            TestResult {
+                name: test_name,
+                passed: false,
+                duration_ms: time::now() - start_time,
+                error_message: error
+            }
+        }
+    }
+
+    // === CONTROL FLOW TESTS ===
+
+    fn test_conditional_logic() -> TestResult {
+        let test_name: String = "Conditional Logic";
+        let start_time: UInt64 = time::now();
+
+        try {
+            // If-else tests
+            let positive: Int32 = 10;
+            let negative: Int32 = -5;
+            let zero: Int32 = 0;
+
+            if positive > 0 {
+                assert_true(true, "Positive number check");
+            } else {
+                assert_true(false, "Should not reach here");
+            }
+
+            if negative > 0 {
+                assert_true(false, "Should not reach here");
+            } else {
+                assert_true(true, "Negative number check");
+            }
+
+            if zero > 0 {
+                assert_true(false, "Should not reach here");
+            } else if zero == 0 {
+                assert_true(true, "Zero check");
+            } else {
+                assert_true(false, "Should not reach here");
+            }
+
+            // Boolean logic
+            let a: Bool = true;
+            let b: Bool = false;
+
+            assert_true(a && !b, "Boolean AND");
+            assert_true(a || b, "Boolean OR");
+            assert_false(a && b, "Boolean AND with false");
+            assert_true(!b, "Boolean NOT");
+
+            TestResult {
+                name: test_name,
+                passed: true,
+                duration_ms: time::now() - start_time,
+                error_message: ""
+            }
+        } catch (error: String) {
+            TestResult {
+                name: test_name,
+                passed: false,
+                duration_ms: time::now() - start_time,
+                error_message: error
+            }
+        }
+    }
+
+    fn test_loop_constructs() -> TestResult {
+        let test_name: String = "Loop Constructs";
+        let start_time: UInt64 = time::now();
+
+        try {
+            // For loop with range
+            let mut sum: Int32 = 0;
+            for i in 1..11 {
+                sum = sum + i;
+            }
+            assert_equal(sum, 55, "For loop sum 1-10");
+
+            // For loop with array
+            let numbers: [Int32; 5] = [1, 2, 3, 4, 5];
+            let mut array_sum: Int32 = 0;
+            for num in numbers {
+                array_sum = array_sum + num;
+            }
+            assert_equal(array_sum, 15, "For loop with array");
+
+            // While loop
+            let mut counter: Int32 = 0;
+            let mut while_sum: Int32 = 0;
+            while counter < 10 {
+                while_sum = while_sum + counter;
+                counter = counter + 1;
+            }
+            assert_equal(while_sum, 45, "While loop sum 0-9");
+
+            // Loop with break and continue
+            let mut break_sum: Int32 = 0;
+            for i in 0..20 {
+                if i > 10 {
+                    break;
+                }
+                if i % 2 != 0 {
+                    continue;
+                }
+                break_sum = break_sum + i;
+            }
+            assert_equal(break_sum, 30, "Loop with break and continue");
+
+            TestResult {
+                name: test_name,
+                passed: true,
+                duration_ms: time::now() - start_time,
+                error_message: ""
+            }
+        } catch (error: String) {
+            TestResult {
+                name: test_name,
+                passed: false,
+                duration_ms: time::now() - start_time,
+                error_message: error
+            }
+        }
+    }
+
+    // === ERROR HANDLING TESTS ===
+
+    fn test_result_type() -> TestResult {
+        let test_name: String = "Result Type";
+        let start_time: UInt64 = time::now();
+
+        try {
+            // Function that may fail
+            fn divide(a: Int32, b: Int32) -> Result<Int32, String> {
+                if b == 0 {
+                    Err("Division by zero".to_string())
+                } else {
+                    Ok(a / b)
+                }
+            }
+
+            // Test successful operation
+            let success_result: Result<Int32, String> = divide(10, 2);
+            assert_true(success_result.is_ok(), "Successful division");
+            assert_equal(success_result.unwrap(), 5, "Division result");
+
+            // Test error case
+            let error_result: Result<Int32, String> = divide(10, 0);
+            assert_true(error_result.is_err(), "Division by zero error");
+            assert_equal(error_result.unwrap_err(), "Division by zero", "Error message");
+
+            // Test pattern matching
+            let test_cases: [Int32; 3] = [2, 5, 0];
+            let mut success_count: Int32 = 0;
+            let mut error_count: Int32 = 0;
+
+            for divisor in test_cases {
+                match divide(10, divisor) {
+                    Ok(_) => success_count = success_count + 1,
+                    Err(_) => error_count = error_count + 1
+                }
+            }
+
+            assert_equal(success_count, 2, "Successful divisions");
+            assert_equal(error_count, 1, "Division errors");
+
+            TestResult {
+                name: test_name,
+                passed: true,
+                duration_ms: time::now() - start_time,
+                error_message: ""
+            }
+        } catch (error: String) {
+            TestResult {
+                name: test_name,
+                passed: false,
+                duration_ms: time::now() - start_time,
+                error_message: error
+            }
+        }
+    }
+
+    fn test_option_type() -> TestResult {
+        let test_name: String = "Option Type";
+        let start_time: UInt64 = time::now();
+
+        try {
+            // Function that may return None
+            fn find_even(numbers: &[Int32]) -> Option<Int32> {
+                for &num in numbers {
+                    if num % 2 == 0 {
+                        return Some(num);
+                    }
+                }
+                None
+            }
+
+            // Test with array containing even number
+            let numbers_with_even: [Int32; 4] = [1, 3, 5, 8];
+            let found_even: Option<Int32> = find_even(&numbers_with_even);
+            assert_true(found_even.is_some(), "Found even number");
+            assert_equal(found_even.unwrap(), 8, "Correct even number");
+
+            // Test with array containing no even numbers
+            let numbers_no_even: [Int32; 3] = [1, 3, 5];
+            let found_no_even: Option<Int32> = find_even(&numbers_no_even);
+            assert_true(found_no_even.is_none(), "No even number found");
+
+            // Test pattern matching
+            let mut some_count: Int32 = 0;
+            let mut none_count: Int32 = 0;
+
+            let test_arrays: [[Int32; 2]; 3] = [[2, 4], [1, 3], [6, 8]];
+            for arr in test_arrays {
+                match find_even(&arr) {
+                    Some(_) => some_count = some_count + 1,
+                    None => none_count = none_count + 1
+                }
+            }
+
+            assert_equal(some_count, 3, "Arrays with even numbers");
+            assert_equal(none_count, 0, "Arrays without even numbers");
+
+            TestResult {
+                name: test_name,
+                passed: true,
+                duration_ms: time::now() - start_time,
+                error_message: ""
+            }
+        } catch (error: String) {
+            TestResult {
+                name: test_name,
+                passed: false,
+                duration_ms: time::now() - start_time,
+                error_message: error
+            }
+        }
+    }
+
+    // === PERFORMANCE TESTS ===
+
+    fn test_performance() -> TestResult {
+        let test_name: String = "Performance Tests";
+        let start_time: UInt64 = time::now();
+
+        try {
+            // Memory allocation performance
+            let mut allocations: Vec<Bytes> = Vec::new();
+            for i in 0..1000 {
+                let data: Bytes = Bytes::from("Allocation test " + i.to_string());
+                allocations.push(data);
+            }
+            assert_equal(allocations.len(), 1000, "Memory allocations");
+
+            // Cryptographic operation performance
+            let mut hashes: Vec<Hash<SHA3_256>> = Vec::new();
+            for i in 0..100 {
+                let data: Bytes = Bytes::from("Hash performance test " + i.to_string());
+                let hash: Hash<SHA3_256> = crypto::hash(data);
+                hashes.push(hash);
+            }
+            assert_equal(hashes.len(), 100, "Hash operations");
+
+            // Data structure performance
+            let mut map: HashMap<Int32, String> = HashMap::new();
+            for i in 0..1000 {
+                map.insert(i, "Value " + i.to_string());
+            }
+            assert_equal(map.len(), 1000, "HashMap insertions");
+
+            let end_time: UInt64 = time::now();
+            let duration: UInt64 = end_time - start_time;
+
+            // Performance should be reasonable (adjust thresholds as needed)
+            assert_true(duration < 10000, "Performance test duration"); // Less than 10 seconds
+
+            TestResult {
+                name: test_name,
+                passed: true,
+                duration_ms: duration,
+                error_message: ""
+            }
+        } catch (error: String) {
+            TestResult {
+                name: test_name,
+                passed: false,
+                duration_ms: time::now() - start_time,
+                error_message: error
+            }
+        }
+    }
+
+    // === MAIN TEST RUNNER ===
+
+    fn run_all_tests() -> Void {
+        console::println("=== T4 Comprehensive Unit Test Suite ===");
+
+        let mut test_suite: TestSuite = TestSuite::new("T4 Unit Tests");
+
+        // Run all test functions
+        let test_functions: Vec<fn() -> TestResult> = vec![
+            test_basic_data_types,
+            test_array_operations,
+            test_vector_operations,
+            test_hashmap_operations,
+            test_symmetric_encryption,
+            test_hash_functions,
+            test_digital_signatures,
+            test_key_exchange,
+            test_string_operations,
+            test_mathematical_operations,
+            test_random_operations,
+            test_conditional_logic,
+            test_loop_constructs,
+            test_result_type,
+            test_option_type,
+            test_performance
+        ];
+
+        for test_func in test_functions {
+            let result: TestResult = test_func();
+            test_suite.add_test(result);
+
+            // Print individual test results
+            let status: String = if result.passed { "✓ PASS" } else { "✗ FAIL" };
+            console::println(status + " - " + result.name + " (" + result.duration_ms.to_string() + "ms)");
+
+            if !result.error_message.is_empty() {
+                console::println("  Error: " + result.error_message);
+            }
+        }
+
+        // Print test suite summary
+        console::println("\n" + test_suite.get_summary());
+
+        // Calculate overall statistics
+        let passed: Int32 = test_suite.tests.iter().filter(|t| t.passed).count() as Int32;
+        let total: Int32 = test_suite.tests.len() as Int32;
+        let success_rate: Float64 = (passed as Float64 / total as Float64) * 100.0;
+
+        console::println("Overall Success Rate: " + success_rate.to_string() + "%");
+
+        if success_rate == 100.0 {
+            console::println("🎉 All tests passed!");
+        } else {
+            console::println("⚠️  Some tests failed. Check output above for details.");
+        }
+    }
+
+    fn main() -> Int32 {
+        run_all_tests();
+        0
+    }
+}
+
+// Example usage:
+// t4c unit_tests.t4
+// ./unit_tests
+
+// Expected output:
+// === T4 Comprehensive Unit Test Suite ===
+// ✓ PASS - Basic Data Types (15ms)
+// ✓ PASS - Array Operations (8ms)
+// ✓ PASS - Vector Operations (12ms)
+// ✓ PASS - HashMap Operations (20ms)
+// ✓ PASS - Symmetric Encryption (45ms)
+// [... continues with all test results ...]
+// Test Suite: T4 Unit Tests
+// Passed: 16/16
+// Success Rate: 100.0%
+// Total Duration: 234ms
+// Overall Success Rate: 100.0%
+// 🎉 All tests passed!

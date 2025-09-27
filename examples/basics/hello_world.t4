@@ -1,0 +1,247 @@
+// T4 Hello World Example
+// Demonstrates basic T4 syntax and secure I/O operations
+
+module HelloWorld {
+    import "libcrypto.so" as crypto_lib;
+    import "libssl.so" as ssl_lib;
+
+    config {
+        default_crypto_provider = "libcrypto";
+        post_quantum_enabled = true;
+        hardware_acceleration = true;
+    }
+
+    // Main function demonstrating basic T4 features
+    fn main() -> Int32 {
+        // Basic string operations with UTF-8 support
+        let message: String = "Hello, World!";
+        let greeting: String = "Welcome to T4 Programming Language";
+
+        // Demonstrate secure console output
+        // The console module automatically handles security considerations
+        console::print(message);
+        console::println("");  // Secure newline
+
+        // Demonstrate string operations
+        let combined: String = message + " " + greeting;
+        console::println(combined);
+
+        // Demonstrate basic data types
+        let number: Int32 = 42;
+        let floating: Float64 = 3.14159;
+        let flag: Bool = true;
+
+        console::println("Number: " + number.to_string());
+        console::println("Pi: " + floating.to_string());
+        console::println("Flag: " + flag.to_string());
+
+        // Demonstrate secure memory handling
+        // String data is automatically managed securely
+        {
+            let sensitive: String = "This is sensitive data";
+            console::println(sensitive);
+            // Memory is automatically wiped when sensitive goes out of scope
+        }
+
+        // Return success code
+        0
+    }
+
+    // Function demonstrating T4's type safety
+    fn demonstrate_types() -> Void {
+        // Integer types with different sizes
+        let small: Int8 = 127;
+        let medium: Int16 = 32767;
+        let regular: Int32 = 2147483647;
+        let large: Int64 = 9223372036854775807;
+
+        // Unsigned integers
+        let positive: UInt32 = 4294967295;
+
+        // Boolean operations
+        let a: Bool = true;
+        let b: Bool = false;
+        let result: Bool = a && b;  // false
+        let alternative: Bool = a || b;  // true
+
+        // Floating point numbers
+        let single: Float32 = 3.14;
+        let double: Float64 = 3.141592653589793;
+
+        console::println("Type demonstration completed");
+    }
+
+    // Function demonstrating control flow
+    fn demonstrate_control_flow() -> Void {
+        // If-else statements
+        let condition: Bool = true;
+
+        if condition {
+            console::println("Condition is true");
+        } else {
+            console::println("Condition is false");
+        }
+
+        // For loops with secure iteration
+        for i in 0..10 {
+            if i % 2 == 0 {
+                console::println("Even number: " + i.to_string());
+            }
+        }
+
+        // While loops
+        let mut counter: Int32 = 0;
+        while counter < 5 {
+            console::println("Counter: " + counter.to_string());
+            counter = counter + 1;
+        }
+
+        // Match expressions for pattern matching
+        let value: Int32 = 42;
+        match value {
+            0 => console::println("Zero"),
+            1 => console::println("One"),
+            42 => console::println("The answer!"),
+            _ => console::println("Something else")
+        }
+    }
+
+    // Function demonstrating arrays and collections
+    fn demonstrate_collections() -> Void {
+        // Array creation and manipulation
+        let numbers: [Int32; 5] = [1, 2, 3, 4, 5];
+        let mut mutable_numbers: [Int32; 3] = [10, 20, 30];
+
+        // Array access
+        let first: Int32 = numbers[0];
+        let last: Int32 = numbers[4];
+
+        console::println("First: " + first.to_string());
+        console::println("Last: " + last.to_string());
+
+        // Array modification (bounds-checked automatically)
+        mutable_numbers[0] = 100;
+
+        // Vector operations (dynamic arrays)
+        let mut vector: Vec<Int32> = Vec::new();
+        vector.push(1);
+        vector.push(2);
+        vector.push(3);
+
+        let popped: Int32 = vector.pop().unwrap_or(0);
+        console::println("Popped: " + popped.to_string());
+
+        // HashMap operations
+        let mut map: HashMap<String, Int32> = HashMap::new();
+        map.insert("key1", 100);
+        map.insert("key2", 200);
+
+        let val: Int32 = map.get("key1").unwrap_or(0);
+        console::println("Map value: " + val.to_string());
+    }
+
+    // Function demonstrating error handling
+    fn demonstrate_error_handling() -> Void {
+        // Result type for error handling
+        fn divide(a: Int32, b: Int32) -> Result<Int32, String> {
+            if b == 0 {
+                return Err("Division by zero".to_string());
+            }
+            Ok(a / b)
+        }
+
+        // Using Result type
+        match divide(10, 2) {
+            Ok(result) => console::println("10/2 = " + result.to_string()),
+            Err(error) => console::println("Error: " + error)
+        }
+
+        match divide(10, 0) {
+            Ok(result) => console::println("10/0 = " + result.to_string()),
+            Err(error) => console::println("Error: " + error)
+        }
+
+        // Option type for nullable values
+        fn find_value(key: String) -> Option<Int32> {
+            if key == "magic" {
+                Some(42)
+            } else {
+                None
+            }
+        }
+
+        match find_value("magic") {
+            Some(value) => console::println("Found: " + value.to_string()),
+            None => console::println("Not found")
+        }
+
+        match find_value("other") {
+            Some(value) => console::println("Found: " + value.to_string()),
+            None => console::println("Not found")
+        }
+    }
+
+    // Function demonstrating T4's security features
+    fn demonstrate_security_features() -> Void {
+        // Cryptographic string with constant-time operations
+        let secret1: CryptoString = CryptoString::new("Secret message 1");
+        let secret2: CryptoString = CryptoString::new("Secret message 1");
+        let secret3: CryptoString = CryptoString::new("Different secret");
+
+        // Constant-time comparison (prevents timing attacks)
+        let equal: Bool = secret1.constant_time_compare("Secret message 1");
+        let not_equal: Bool = secret1.constant_time_compare("Wrong message");
+
+        console::println("Equal: " + equal.to_string());
+        console::println("Not equal: " + not_equal.to_string());
+
+        // Secure memory handling
+        {
+            let sensitive_data: String = "This will be wiped";
+            // Memory is automatically managed securely
+            console::println("Sensitive: " + sensitive_data);
+            // When sensitive_data goes out of scope, memory is wiped
+        }
+
+        // Secure random number generation
+        let random_bytes: Bytes = crypto::random::secure_bytes(32);
+        console::println("Random bytes length: " + random_bytes.len().to_string());
+    }
+}
+
+// Example usage:
+// t4c hello_world.t4
+// ./hello_world
+
+// Expected output:
+// Hello, World!
+// Hello, World! Welcome to T4 Programming Language
+// Number: 42
+// Pi: 3.14159
+// Flag: true
+// This is sensitive data
+// Type demonstration completed
+// Condition is true
+// Even number: 0
+// Even number: 2
+// Even number: 4
+// Even number: 6
+// Even number: 8
+// Counter: 0
+// Counter: 1
+// Counter: 2
+// Counter: 3
+// Counter: 4
+// The answer!
+// First: 1
+// Last: 5
+// Popped: 3
+// Map value: 100
+// 10/2 = 5
+// Error: Division by zero
+// Found: 42
+// Not found
+// Equal: true
+// Not equal: false
+// Sensitive: This will be wiped
+// Random bytes length: 32

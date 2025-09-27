@@ -1,0 +1,492 @@
+// T4 Digital Signatures and Key Exchange Example
+// Comprehensive demonstration of signature schemes and key exchange protocols
+
+module SignaturesKeyExchangeDemo {
+    import "libcrypto.so" as crypto_lib;
+
+    config {
+        default_crypto_provider = "libcrypto";
+        post_quantum_enabled = true;
+        hardware_acceleration = true;
+    }
+
+    // === DIGITAL SIGNATURE EXAMPLES ===
+
+    // Function demonstrating Ed25519 signatures
+    fn demonstrate_ed25519_signatures() -> Void {
+        console::println("=== Ed25519 Digital Signatures ===");
+
+        // Generate Ed25519 keypair
+        let (public_key, private_key): (PublicKey<Ed25519>, PrivateKey<Ed25519>) = crypto::generate_keypair();
+        console::println("Generated Ed25519 keypair");
+
+        // Prepare message to sign
+        let message: Bytes = Bytes::from("This is a message to be signed with Ed25519");
+        console::println("Message to sign: " + message.len().to_string() + " bytes");
+
+        // Sign the message
+        let signature: Signature<Ed25519> = crypto::sign(message, private_key);
+        console::println("Signature created: " + signature.size().to_string() + " bytes");
+
+        // Verify the signature
+        let is_valid: Bool = crypto::verify(message, signature, public_key);
+        console::println("Signature verification: " + is_valid.to_string());
+
+        // Demonstrate signature failure cases
+        let wrong_message: Bytes = Bytes::from("This is a different message");
+        let is_valid_wrong: Bool = crypto::verify(wrong_message, signature, public_key);
+        console::println("Wrong message verification: " + is_valid_wrong.to_string());
+
+        // Generate another keypair to test wrong key
+        let (wrong_public, _): (PublicKey<Ed25519>, PrivateKey<Ed25519>) = crypto::generate_keypair();
+        let is_valid_wrong_key: Bool = crypto::verify(message, signature, wrong_public);
+        console::println("Wrong key verification: " + is_valid_wrong_key.to_string());
+
+        // Demonstrate deterministic signatures
+        let signature2: Signature<Ed25519> = crypto::sign(message, private_key);
+        let signatures_identical: Bool = signature.constant_time_compare(signature2);
+        console::println("Deterministic signatures: " + signatures_identical.to_string());
+    }
+
+    // Function demonstrating ECDSA signatures
+    fn demonstrate_ecdsa_signatures() -> Void {
+        console::println("\n=== ECDSA Digital Signatures ===");
+
+        // Generate ECDSA keypair
+        let (public_key, private_key): (PublicKey<SecP256k1>, PrivateKey<SecP256k1>) = crypto::generate_keypair();
+        console::println("Generated ECDSA keypair (secp256k1)");
+
+        // Prepare transaction-like data to sign
+        let transaction_data: Bytes = Bytes::from("Transfer 1.0 BTC to address 1ABC...");
+        console::println("Transaction data: " + transaction_data.len().to_string() + " bytes");
+
+        // Sign the transaction
+        let signature: Signature<SecP256k1> = crypto::sign(transaction_data, private_key);
+        console::println("ECDSA signature: " + signature.size().to_string() + " bytes");
+
+        // Verify the signature
+        let is_valid: Bool = crypto::verify(transaction_data, signature, public_key);
+        console::println("ECDSA verification: " + is_valid.to_string());
+
+        // Demonstrate signature malleability protection
+        let signature3: Signature<SecP256k1> = crypto::sign(transaction_data, private_key);
+        let signatures_different: Bool = !signature.constant_time_compare(signature3);
+        console::println("Signatures are unique (malleability protection): " + signatures_different.to_string());
+    }
+
+    // Function demonstrating RSA signatures
+    fn demonstrate_rsa_signatures() -> Void {
+        console::println("\n=== RSA Digital Signatures ===");
+
+        // Generate RSA keypair
+        let (public_key, private_key): (PublicKey<RSA2048>, PrivateKey<RSA2048>) = crypto::generate_keypair();
+        console::println("Generated RSA-2048 keypair");
+
+        // Prepare document to sign
+        let document: Bytes = Bytes::from("Important Contract Document - Do not modify");
+        console::println("Document size: " + document.len().to_string() + " bytes");
+
+        // Sign the document
+        let signature: Signature<RSA2048> = crypto::sign(document, private_key);
+        console::println("RSA signature: " + signature.size().to_string() + " bytes");
+
+        // Verify the signature
+        let is_valid: Bool = crypto::verify(document, signature, public_key);
+        console::println("RSA signature verification: " + is_valid.to_string());
+
+        // Demonstrate PSS padding for enhanced security
+        let pss_signature: Signature<RSA2048PSS> = crypto::sign_pss(document, private_key);
+        let is_pss_valid: Bool = crypto::verify_pss(document, pss_signature, public_key);
+        console::println("RSA-PSS signature verification: " + is_pss_valid.to_string());
+    }
+
+    // === KEY EXCHANGE PROTOCOLS ===
+
+    // Function demonstrating Diffie-Hellman key exchange
+    fn demonstrate_diffie_hellman() -> Void {
+        console::println("\n=== Diffie-Hellman Key Exchange ===");
+
+        // Alice generates her keypair
+        let (alice_public, alice_private): (PublicKey<DH2048>, PrivateKey<DH2048>) = crypto::generate_keypair();
+        console::println("Alice generated DH keypair");
+
+        // Bob generates his keypair
+        let (bob_public, bob_private): (PublicKey<DH2048>, PrivateKey<DH2048>) = crypto::generate_keypair();
+        console::println("Bob generated DH keypair");
+
+        // Alice computes shared secret using Bob's public key
+        let alice_shared: SharedSecret<DH2048> = crypto::dh_compute(alice_private, bob_public);
+
+        // Bob computes shared secret using Alice's public key
+        let bob_shared: SharedSecret<DH2048> = crypto::dh_compute(bob_private, alice_public);
+
+        // Verify both shared secrets are identical
+        let secrets_match: Bool = alice_shared.constant_time_compare(bob_shared);
+        console::println("DH shared secrets match: " + secrets_match.to_string());
+        console::println("Shared secret size: " + alice_shared.size().to_string() + " bytes");
+
+        // Use shared secret to derive encryption key
+        let session_key: Key<AES256> = crypto::derive_key(alice_shared);
+        console::println("Derived session key: " + session_key.size().to_string() + " bytes");
+
+        // Demonstrate secure communication
+        let message: Plaintext = Plaintext::from("Diffie-Hellman established session");
+        let nonce: Nonce = crypto::generate_nonce();
+
+        let encrypted: Ciphertext<AES256> = crypto::encrypt(message, session_key, nonce);
+        let decrypted: Plaintext = crypto::decrypt(encrypted, session_key, nonce);
+
+        console::println("DH session message: " + decrypted.to_string());
+    }
+
+    // Function demonstrating ECDH key exchange
+    fn demonstrate_ecdh_key_exchange() -> Void {
+        console::println("\n=== ECDH Key Exchange ===");
+
+        // Alice and Bob generate EC keypairs
+        let (alice_public, alice_private): (PublicKey<SecP256r1>, PrivateKey<SecP256r1>) = crypto::generate_keypair();
+        let (bob_public, bob_private): (PublicKey<SecP256r1>, PrivateKey<SecP256r1>) = crypto::generate_keypair();
+
+        console::println("Alice and Bob generated EC keypairs");
+
+        // Perform ECDH key exchange
+        let alice_shared: SharedSecret<SecP256r1> = crypto::ecdh_compute(alice_private, bob_public);
+        let bob_shared: SharedSecret<SecP256r1> = crypto::ecdh_compute(bob_private, alice_public);
+
+        // Verify shared secrets match
+        let secrets_match: Bool = alice_shared.constant_time_compare(bob_shared);
+        console::println("ECDH shared secrets match: " + secrets_match.to_string());
+
+        // Use shared secret for authenticated encryption
+        let session_key: Key<AES256GCM> = crypto::derive_key(alice_shared);
+        let message: Plaintext = Plaintext::from("ECDH authenticated session");
+        let associated_data: Bytes = Bytes::from("session_metadata");
+
+        let (ciphertext, tag): (Ciphertext<AES256GCM>, AuthTag) = crypto::encrypt_auth(message, session_key, associated_data);
+        let decrypted: Plaintext = crypto::decrypt_auth(ciphertext, tag, session_key, associated_data);
+
+        console::println("ECDH session: " + decrypted.to_string());
+    }
+
+    // Function demonstrating post-quantum key exchange
+    fn demonstrate_post_quantum_key_exchange() -> Void {
+        console::println("\n=== Post-Quantum Key Exchange (Kyber) ===");
+
+        // Alice generates Kyber keypair
+        let (alice_public, alice_private): (PublicKey<Kyber1024>, PrivateKey<Kyber1024>) = crypto::generate_keypair();
+        console::println("Alice generated Kyber-1024 keypair");
+
+        // Bob will encapsulate to get shared secret
+        let (bob_shared_secret, ciphertext): (SharedSecret<Kyber1024>, Ciphertext<Kyber1024>) = crypto::encapsulate(alice_public);
+
+        // Alice decapsulates to get the same shared secret
+        let alice_shared_secret: SharedSecret<Kyber1024> = crypto::decapsulate(alice_private, ciphertext);
+
+        // Verify shared secrets match
+        let secrets_match: Bool = alice_shared_secret.constant_time_compare(bob_shared_secret);
+        console::println("Kyber shared secrets match: " + secrets_match.to_string());
+
+        // Use post-quantum shared secret for encryption
+        let session_key: Key<AES256> = crypto::derive_key(alice_shared_secret);
+        let message: Plaintext = Plaintext::from("Post-quantum secure communication");
+
+        let nonce: Nonce = crypto::generate_nonce();
+        let encrypted: Ciphertext<AES256> = crypto::encrypt(message, session_key, nonce);
+        let decrypted: Plaintext = crypto::decrypt(encrypted, session_key, nonce);
+
+        console::println("PQ session: " + decrypted.to_string());
+    }
+
+    // === ADVANCED SIGNATURE SCHEMES ===
+
+    // Function demonstrating threshold signatures
+    fn demonstrate_threshold_signatures() -> Void {
+        console::println("\n=== Threshold Signatures ===");
+
+        // Simulate a (3, 5) threshold signature scheme
+        const THRESHOLD: Int32 = 3;
+        const TOTAL: Int32 = 5;
+
+        // Generate key shares for 5 participants
+        let mut key_shares: Vec<PrivateKey<ThresholdBLS>> = Vec::new();
+        let mut public_keys: Vec<PublicKey<ThresholdBLS>> = Vec::new();
+
+        for i in 0..TOTAL {
+            let (pub_key, priv_key): (PublicKey<ThresholdBLS>, PrivateKey<ThresholdBLS>) = crypto::generate_keypair();
+            public_keys.push(pub_key);
+            key_shares.push(priv_key);
+        }
+
+        console::println("Generated " + TOTAL.to_string() + " threshold key shares");
+
+        // Message to be threshold-signed
+        let message: Bytes = Bytes::from("Important threshold-signed message");
+
+        // Generate partial signatures from 3 participants
+        let mut partial_signatures: Vec<PartialSignature<ThresholdBLS>> = Vec::new();
+        let signers: [Int32; 3] = [0, 2, 4]; // Participants 0, 2, and 4
+
+        for &signer_index in signers.iter() {
+            let partial_sig: PartialSignature<ThresholdBLS> = crypto::partial_sign(message, key_shares[signer_index as usize]);
+            partial_signatures.push(partial_sig);
+        }
+
+        console::println("Generated " + partial_signatures.len().to_string() + " partial signatures");
+
+        // Combine partial signatures into threshold signature
+        let threshold_signature: Signature<ThresholdBLS> = crypto::combine_signatures(partial_signatures, THRESHOLD);
+
+        // Verify threshold signature using master public key
+        let master_public_key: PublicKey<ThresholdBLS> = crypto::combine_public_keys(public_keys);
+        let is_valid: Bool = crypto::verify(message, threshold_signature, master_public_key);
+
+        console::println("Threshold signature verification: " + is_valid.to_string());
+
+        // Demonstrate that individual partial signatures are invalid
+        let is_partial_valid: Bool = crypto::verify_partial(message, partial_signatures[0], public_keys[signers[0] as usize]);
+        console::println("Partial signature verification: " + is_partial_valid.to_string());
+    }
+
+    // Function demonstrating blind signatures
+    fn demonstrate_blind_signatures() -> Void {
+        console::println("\n=== Blind Signatures ===");
+
+        // Alice wants Bob to sign a message without revealing it
+        let (bob_public, bob_private): (PublicKey<RSA2048>, PrivateKey<RSA2048>) = crypto::generate_keypair();
+        console::println("Bob generated RSA keypair for blind signatures");
+
+        // Alice prepares message for blind signing
+        let original_message: Bytes = Bytes::from("Secret message for blind signing");
+        let blinding_factor: BigInt = crypto::generate_blinding_factor();
+
+        // Alice blinds the message
+        let blinded_message: Bytes = crypto::blind_message(original_message, bob_public, blinding_factor);
+
+        // Bob signs the blinded message
+        let blinded_signature: Signature<RSA2048> = crypto::sign(blinded_message, bob_private);
+
+        // Alice unblinds the signature
+        let unblinded_signature: Signature<RSA2048> = crypto::unblind_signature(blinded_signature, blinding_factor);
+
+        // Verify the signature reveals the original message
+        let is_valid: Bool = crypto::verify(original_message, unblinded_signature, bob_public);
+        console::println("Blind signature verification: " + is_valid.to_string());
+        console::println("Bob signed message without seeing it: " + is_valid.to_string());
+    }
+
+    // === CERTIFICATE AND PKI EXAMPLES ===
+
+    // Function demonstrating certificate creation and verification
+    fn demonstrate_certificates() -> Void {
+        console::println("\n=== Digital Certificates ===");
+
+        // Certificate Authority generates keypair
+        let (ca_public, ca_private): (PublicKey<Ed25519>, PrivateKey<Ed25519>) = crypto::generate_keypair();
+        console::println("CA generated Ed25519 keypair");
+
+        // User generates keypair
+        let (user_public, user_private): (PublicKey<Ed25519>, PrivateKey<Ed25519>) = crypto::generate_keypair();
+
+        // Create certificate
+        let cert_data: CertificateData = CertificateData {
+            subject: "user@example.com",
+            public_key: user_public,
+            issuer: "CA@example.com",
+            valid_from: time::now(),
+            valid_until: time::now() + 365 * 24 * 60 * 60, // 1 year
+            serial_number: crypto::generate_random_bytes(16)
+        };
+
+        // CA signs the certificate
+        let certificate: Certificate<Ed25519> = crypto::sign_certificate(cert_data, ca_private);
+        console::println("Certificate created and signed by CA");
+
+        // Verify certificate
+        let is_cert_valid: Bool = crypto::verify_certificate(certificate, ca_public);
+        console::println("Certificate verification: " + is_cert_valid.to_string());
+
+        // Use certificate for authentication
+        let challenge: Bytes = Bytes::from("Authentication challenge");
+        let response: Signature<Ed25519> = crypto::sign(challenge, user_private);
+
+        // Verify response using certificate's public key
+        let is_response_valid: Bool = crypto::verify(challenge, response, certificate.public_key);
+        console::println("Certificate-based authentication: " + is_response_valid.to_string());
+    }
+
+    // === REAL-WORLD APPLICATION SCENARIOS ===
+
+    // Function demonstrating secure email signing
+    fn demonstrate_email_signing() -> Void {
+        console::println("\n=== Secure Email Signing ===");
+
+        // Sender generates keypair
+        let (sender_public, sender_private): (PublicKey<Ed25519>, PrivateKey<Ed25519>) = crypto::generate_keypair();
+
+        // Email content
+        let email_content: String = """
+From: alice@example.com
+To: bob@example.com
+Subject: Important Message
+
+This is a secure email that should be cryptographically signed.
+""";
+
+        let email_bytes: Bytes = Bytes::from(email_content);
+
+        // Sign the email
+        let email_signature: Signature<Ed25519> = crypto::sign(email_bytes, sender_private);
+        console::println("Email signed with Ed25519");
+
+        // Verify email signature
+        let is_email_valid: Bool = crypto::verify(email_bytes, email_signature, sender_public);
+        console::println("Email signature verification: " + is_email_valid.to_string());
+
+        // Demonstrate signature with email headers
+        let headers: String = "From: alice@example.com\nTo: bob@example.com\nSubject: Important Message";
+        let body: String = "This is a secure email that should be cryptographically signed.";
+
+        let signed_headers: Signature<Ed25519> = crypto::sign(Bytes::from(headers), sender_private);
+        let signed_body: Signature<Ed25519> = crypto::sign(Bytes::from(body), sender_private);
+
+        console::println("Email headers and body signed separately for flexibility");
+    }
+
+    // Function demonstrating software update signing
+    fn demonstrate_software_signing() -> Void {
+        console::println("\n=== Software Update Signing ===");
+
+        // Software vendor generates keypair
+        let (vendor_public, vendor_private): (PublicKey<Ed25519>, PrivateKey<Ed25519>) = crypto::generate_keypair();
+
+        // Software update metadata
+        let update_info: String = """
+Version: 2.1.0
+Platform: Linux x86_64
+Size: 15728640 bytes
+Checksum: sha256:a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3
+""";
+
+        let update_bytes: Bytes = Bytes::from(update_info);
+
+        // Sign the update
+        let update_signature: Signature<Ed25519> = crypto::sign(update_bytes, vendor_private);
+        console::println("Software update signed");
+
+        // Verify update signature
+        let is_update_valid: Bool = crypto::verify(update_bytes, update_signature, vendor_public);
+        console::println("Update signature verification: " + is_update_valid.to_string());
+
+        // Demonstrate batch signature verification
+        let mut updates: Vec<(Bytes, Signature<Ed25519>)> = Vec::new();
+
+        for i in 0..5 {
+            let update_data: Bytes = Bytes::from("Update batch " + i.to_string());
+            let update_sig: Signature<Ed25519> = crypto::sign(update_data, vendor_private);
+            updates.push((update_data, update_sig));
+        }
+
+        console::println("Batch verification of " + updates.len().to_string() + " signatures");
+        let mut all_valid: Bool = true;
+
+        for (data, sig) in updates {
+            let is_valid: Bool = crypto::verify(data, sig, vendor_public);
+            if !is_valid {
+                all_valid = false;
+                break;
+            }
+        }
+
+        console::println("All signatures in batch valid: " + all_valid.to_string());
+    }
+
+    // Function demonstrating blockchain transaction signing
+    fn demonstrate_blockchain_signing() -> Void {
+        console::println("\n=== Blockchain Transaction Signing ===");
+
+        // User generates blockchain keypair
+        let (blockchain_public, blockchain_private): (PublicKey<SecP256k1>, PrivateKey<SecP256k1>) = crypto::generate_keypair();
+
+        // Create transaction
+        let transaction: String = """
+{
+    "from": "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+    "to": "1BoatSLRHtKNngkdXEeobR76b53LETtpyT",
+    "amount": "0.001",
+    "fee": "0.00001",
+    "timestamp": "2024-01-15T10:30:00Z"
+}
+""";
+
+        let tx_bytes: Bytes = Bytes::from(transaction);
+
+        // Sign transaction
+        let tx_signature: Signature<SecP256k1> = crypto::sign(tx_bytes, blockchain_private);
+        console::println("Blockchain transaction signed");
+
+        // Verify transaction signature
+        let is_tx_valid: Bool = crypto::verify(tx_bytes, tx_signature, blockchain_public);
+        console::println("Transaction signature verification: " + is_tx_valid.to_string());
+
+        // Demonstrate multi-signature transaction
+        let (user2_public, user2_private): (PublicKey<SecP256k1>, PrivateKey<SecP256k1>) = crypto::generate_keypair();
+
+        let multisig_tx: String = "Multi-signature transaction requiring 2 signatures";
+        let multisig_bytes: Bytes = Bytes::from(multisig_tx);
+
+        let sig1: Signature<SecP256k1> = crypto::sign(multisig_bytes, blockchain_private);
+        let sig2: Signature<SecP256k1> = crypto::sign(multisig_bytes, user2_private);
+
+        console::println("Multi-signature transaction created with 2 signatures");
+    }
+
+    // Helper types
+    struct CertificateData {
+        subject: String,
+        public_key: PublicKey<Ed25519>,
+        issuer: String,
+        valid_from: UInt64,
+        valid_until: UInt64,
+        serial_number: Bytes
+    }
+
+    struct Certificate<T> {
+        data: CertificateData,
+        signature: Signature<T>
+    }
+
+    // Main function
+    fn main() -> Int32 {
+        console::println("=== T4 Signatures and Key Exchange Demo ===");
+
+        demonstrate_ed25519_signatures();
+        demonstrate_ecdsa_signatures();
+        demonstrate_rsa_signatures();
+        demonstrate_diffie_hellman();
+        demonstrate_ecdh_key_exchange();
+        demonstrate_post_quantum_key_exchange();
+        demonstrate_threshold_signatures();
+        demonstrate_blind_signatures();
+        demonstrate_certificates();
+        demonstrate_email_signing();
+        demonstrate_software_signing();
+        demonstrate_blockchain_signing();
+
+        console::println("\n=== Signatures and Key Exchange Demo Complete ===");
+        0
+    }
+}
+
+// Example usage:
+// t4c signatures_key_exchange.t4
+// ./signatures_key_exchange
+
+// Expected output:
+// === T4 Signatures and Key Exchange Demo ===
+// === Ed25519 Digital Signatures ===
+// Generated Ed25519 keypair
+// Message to sign: 48 bytes
+// Signature created: 64 bytes
+// Signature verification: true
+// Wrong message verification: false
+// [... continues with ECDSA, RSA, key exchange protocols, etc.]

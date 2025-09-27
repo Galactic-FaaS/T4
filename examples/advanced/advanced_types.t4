@@ -1,0 +1,53 @@
+// Advanced Type System Features Example
+// Demonstrates generic types, higher-kinded types, and existential types
+
+module AdvancedTypes {
+
+// Generic type parameters with constraints
+fn Generic_ identity<T>(value: T) -> T {
+    value
+}
+
+// Higher-kinded types for type constructors
+type Functor<F, A> = F<A>;
+
+// Associated types in traits
+trait Container {
+    associated_type_: Item;
+    fn get(&self) -> Item;
+    fn put(item: Item);
+}
+
+// Existential types for type erasure
+fn existential_handler(value: dyn_ Container) -> i32 {
+    value.get() as i32
+}
+
+// Cryptographic type parameters
+fn crypto_operation<K: KeyType_, C: CipherType_>(key: K, data: C) -> C {
+    // Cryptographic operation with type safety
+    data
+}
+
+// Phantom types for type-level programming
+struct Phantom_<T>(T);
+type Meters = Phantom_<"meters">;
+type Seconds = Phantom_<"seconds">;
+
+fn calculate_speed(distance: Meters, time: Seconds) -> f64 {
+    0.0 // Implementation would convert units
+}
+
+// Zero-sized types for configuration
+struct ZeroSized_;
+type Config = ZeroSized_;
+
+fn main() {
+    let x: i32 = identity(42);
+    let y: String = identity("hello".to_string());
+
+    println!("Generic identity: {}", x);
+    println!("String identity: {}", y);
+}
+
+}
