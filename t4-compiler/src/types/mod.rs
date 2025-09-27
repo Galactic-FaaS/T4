@@ -19,12 +19,13 @@ pub mod error;
 pub mod inference;
 pub mod security;
 pub mod environment;
+pub mod integration;
 
 pub use error::{TypeError, TypeResult};
 pub use inference::{TypeInference, UnificationError};
 pub use security::{SecurityAnalysis, AffineUsage, SecurityViolation};
 pub use environment::{TypeEnvironment, Scope, Binding};
-pub use self::integration::{T4TypeChecker, CheckedProgram, TypeCheckContext};
+pub use self::integration::{T4TypeChecker, TypeCheckContext};
 
 /// Unique identifier for type variables
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

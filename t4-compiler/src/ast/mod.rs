@@ -280,6 +280,17 @@ pub struct ModuleConfig {
     pub custom_settings: std::collections::HashMap<String, String>,
 }
 
+impl Default for ModuleConfig {
+    fn default() -> Self {
+        Self {
+            default_crypto_provider: None,
+            post_quantum_enabled: false,
+            hardware_acceleration: false,
+            custom_settings: std::collections::HashMap::new(),
+        }
+    }
+}
+
 /// Module definition
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Module {
